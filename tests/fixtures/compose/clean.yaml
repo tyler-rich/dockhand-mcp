@@ -1,0 +1,16 @@
+# Invented guardrail fixture: nothing any rule flags.
+services:
+  web:
+    image: nginx:1.27
+    ports: ["8080:80"]
+    volumes:
+      - ./html:/usr/share/nginx/html:ro
+      - data:/var/cache/nginx
+      - type: bind
+        source: ./conf
+        target: /etc/nginx/conf.d
+    environment:
+      DB_PASSWORD: ${DB_PASSWORD}
+      TZ: UTC
+volumes:
+  data: {}

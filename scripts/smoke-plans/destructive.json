@@ -1,0 +1,15 @@
+[
+  {"tool": "dockhand_create_stack", "args": {"environment_id": "${test_env}", "name": "${smoke_stack}", "compose": "services:\n  web:\n    image: nginx:alpine\n"}, "expect": {"ok": true, "verified": true}},
+  {"tool": "dockhand_deploy_stack", "args": {"environment_id": "${test_env}", "stack": "${smoke_stack}", "timeout_seconds": 240}, "expect": {"ok": true}},
+  {"tool": "dockhand_list_containers", "args": {"environment_id": "${test_env}", "stack": "${smoke_stack}"}, "expect": {"ok": true, "includes_match": {"data.items": {"name": "${smoke_container}", "state": "running"}}}},
+
+  {"tool": "dockhand_remove_container", "args": {"environment_id": "${test_env}", "ref": "${smoke_container}"}, "expect": {"ok": false, "error.code": "guardrail_blocked"}},
+  {"tool": "dockhand_list_containers", "args": {"environment_id": "${test_env}", "stack": "${smoke_stack}"}, "expect": {"ok": true, "includes_match": {"data.items": {"name": "${smoke_container}", "state": "running"}}}},
+
+  {"tool": "dockhand_preview_stack_delete", "args": {"environment_id": "${test_env}", "stack": "${smoke_stack}"}, "expect": {"ok": true, "equals": {"data.stackName": "${smoke_stack}"}}},
+  {"tool": "dockhand_delete_stack", "args": {"environment_id": "${test_env}", "stack": "${smoke_stack}", "remove_volumes": true, "delete_files": true}, "expect": {"ok": false, "error.code": "confirmation_required", "equals": {"data.preview.delete_preview.stackName": "${smoke_stack}", "data.preview.delete_files": true}}},
+  {"tool": "dockhand_list_stacks", "args": {"environment_id": "${test_env}", "limit": 500}, "expect": {"ok": true, "includes_match": {"data.items": {"name": "${smoke_stack}"}}}},
+
+  {"tool": "dockhand_delete_stack", "args": {"environment_id": "${test_env}", "stack": "${smoke_stack}", "remove_volumes": true, "delete_files": true, "confirm": true, "timeout_seconds": 240}, "expect": {"ok": true, "equals": {"data.approval.method": "param", "data.deleted": true}}},
+  {"tool": "dockhand_list_stacks", "args": {"environment_id": "${test_env}", "limit": 500}, "expect": {"ok": true, "excludes_match": {"data.items": {"name": "${smoke_stack}"}}}}
+]

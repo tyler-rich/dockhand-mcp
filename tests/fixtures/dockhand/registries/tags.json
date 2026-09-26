@@ -1,0 +1,21 @@
+{
+  "_comment": "Invented from the DockHand 1.0.46 spec schema, with the key casing live DockHand uses; not a recorded response. {{NAME}} placeholders are filled at load time.",
+  "body": {
+    "tags": [
+      {
+        "name": "1.27",
+        "size": 600,
+        "digest": "sha256:{{DIGEST_NGINX}}"
+      },
+      {
+        "name": "1.26",
+        "size": 590
+      }
+    ],
+    "total": 40,
+    "page": 1,
+    "pageSize": 2,
+    "hasNext": true,
+    "hasPrev": false
+  }
+}

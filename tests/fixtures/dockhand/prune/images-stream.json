@@ -1,0 +1,27 @@
+{
+  "_comment": "Invented SSE stream from the DockHand 1.0.46 spec's 200 description for POST /api/prune/images (progress events, a final result event with { success, result }); not recorded. Each entry is [event, data].",
+  "body": {
+    "events": [
+      [
+        "progress",
+        {
+          "status": "Pruning images"
+        }
+      ],
+      [
+        "result",
+        {
+          "success": true,
+          "result": {
+            "ImagesDeleted": [
+              {
+                "Deleted": "sha256:{{IMG_DANGLING}}"
+              }
+            ],
+            "SpaceReclaimed": 50
+          }
+        }
+      ]
+    ]
+  }
+}

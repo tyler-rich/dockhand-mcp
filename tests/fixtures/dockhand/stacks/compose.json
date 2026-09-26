@@ -1,0 +1,9 @@
+{
+  "_comment": "Invented; the spec gives no 200 schema. Shape follows live DockHand's keys.",
+  "body": {
+    "content": "services:\n  web:\n    image: nginx:1.27\n",
+    "stackDir": "/data/stacks/shop",
+    "composePath": "/data/stacks/shop/compose.yaml",
+    "envPath": "/data/stacks/shop/.env"
+  }
+}

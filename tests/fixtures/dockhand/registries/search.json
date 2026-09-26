@@ -1,0 +1,12 @@
+{
+  "_comment": "Invented from the DockHand 1.0.46 spec schema, with the key casing live DockHand uses; not a recorded response. {{NAME}} placeholders are filled at load time.",
+  "body": [
+    {
+      "name": "nginx",
+      "description": "Official build of Nginx.",
+      "star_count": 100,
+      "is_official": true,
+      "is_automated": false
+    }
+  ]
+}

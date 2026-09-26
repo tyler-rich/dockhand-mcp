@@ -1,0 +1,17 @@
+{
+  "_comment": "Invented. Live DockHand answers an object keyed by container id; the spec describes an array. {{NAME}} placeholders are filled at load time.",
+  "body": {
+    "{{CID_WEB}}": {
+      "sizeRw": 10,
+      "sizeRootFs": 100
+    },
+    "{{CID_DB}}": {
+      "sizeRw": 30,
+      "sizeRootFs": 300
+    },
+    "{{CID_WORKER}}": {
+      "sizeRw": 0,
+      "sizeRootFs": 5
+    }
+  }
+}

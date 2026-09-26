@@ -1,0 +1,22 @@
+[
+  {"tool": "dockhand_create_stack", "args": {"environment_id": "${test_env}", "name": "${smoke_stack}", "compose": "services:\n  web:\n    image: nginx:alpine\n    environment:\n      SMOKE_TOKEN: smoke\n"}, "expect": {"ok": true, "verified": true}},
+  {"tool": "dockhand_get_stack_compose", "args": {"environment_id": "${test_env}", "stack": "${smoke_stack}"}, "expect": {"ok": true}, "save": {"compose_v1": "data.content"}},
+
+  {"tool": "dockhand_update_stack_compose", "args": {"environment_id": "${test_env}", "stack": "${smoke_stack}", "content": "services:\n  web:\n    image: nginx:alpine\n    privileged: true\n"}, "expect": {"ok": false, "error.code": "guardrail_blocked"}},
+  {"tool": "dockhand_get_stack_compose", "args": {"environment_id": "${test_env}", "stack": "${smoke_stack}"}, "expect": {"ok": true, "equals": {"data.content": "${compose_v1}"}}},
+
+  {"tool": "dockhand_get_stack_compose", "args": {"environment_id": "${test_env}", "stack": "${smoke_stack}", "lint": true}, "expect": {"ok": true, "equals": {"data.guardrails.blocked": false}, "not_equals": {"data.guardrails.findings": []}}},
+
+  {"tool": "dockhand_update_stack_compose", "args": {"environment_id": "${test_env}", "stack": "${smoke_stack}", "content": "services:\n  web:\n    image: nginx:alpine\n    environment:\n      SMOKE_TOKEN: <redacted>\n"}, "expect": {"ok": false, "error.code": "guardrail_blocked"}},
+  {"tool": "dockhand_get_stack_compose", "args": {"environment_id": "${test_env}", "stack": "${smoke_stack}"}, "expect": {"ok": true, "equals": {"data.content": "${compose_v1}"}}},
+
+  {"tool": "dockhand_update_stack_compose", "args": {"environment_id": "${test_env}", "stack": "${smoke_stack}", "content": "services:\n  web:\n    image: nginx:alpine\n    restart: unless-stopped\n    labels:\n      smoke.step: update\n    environment:\n      SMOKE_TOKEN: smoke\n"}, "expect": {"ok": true, "verified": true}},
+  {"tool": "dockhand_modify_stack_env", "args": {"environment_id": "${test_env}", "stack": "${smoke_stack}", "set_vars": {"SMOKE": "1"}}, "expect": {"ok": true, "verified": true, "includes": {"warnings": "Running containers keep their old environment until the stack is recreated (dockhand_restart_stack mode=recreate or dockhand_deploy_stack force_recreate=true)"}}},
+
+  {"tool": "dockhand_deploy_stack", "args": {"environment_id": "${test_env}", "stack": "${smoke_stack}", "timeout_seconds": 240}, "expect": {"ok": true}},
+  {"tool": "dockhand_list_stack_deploys", "args": {"environment_id": "${test_env}", "stack": "${smoke_stack}", "limit": 5}, "expect": {"ok": true, "not_equals": {"data.items": []}}, "save": {"run_id": "data.items.0.id"}},
+  {"tool": "dockhand_get_stack_deploy_log", "args": {"stack": "${smoke_stack}", "run_id": "${run_id}", "max_bytes": 8192}, "expect": {"ok": true}},
+
+  {"tool": "dockhand_restart_stack", "args": {"environment_id": "${test_env}", "stack": "${smoke_stack}", "mode": "recreate", "timeout_seconds": 240}, "expect": {"ok": true}},
+  {"tool": "dockhand_stop_stack", "args": {"environment_id": "${test_env}", "stack": "${smoke_stack}", "timeout_seconds": 120}, "expect": {"ok": true}}
+]

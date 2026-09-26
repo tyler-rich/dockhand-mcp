@@ -1,0 +1,65 @@
+name: Bug report
+description: Something in dockhand-mcp does not work as documented.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Security issues go through private reporting, not here** (see SECURITY.md).
+        Remove tokens, hostnames, IP addresses, container and stack names, and log contents that
+        identify your deployment before you submit.
+  - type: input
+    id: version
+    attributes:
+      label: dockhand-mcp version
+      description: "`dockhand-mcp --version`, or the image digest you run."
+    validations:
+      required: true
+  - type: input
+    id: dockhand
+    attributes:
+      label: DockHand version and edition
+      placeholder: "1.0.46, Free"
+    validations:
+      required: true
+  - type: dropdown
+    id: profile
+    attributes:
+      label: Profile
+      options: [read-only, operator, admin]
+    validations:
+      required: true
+  - type: input
+    id: client
+    attributes:
+      label: MCP client and transport
+      placeholder: "Claude Code 2.1.x over HTTP; Claude Desktop over stdio; MCP Inspector …"
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what you expected
+      description: The tool called, its arguments (sanitized), the result or error `code`.
+    validations:
+      required: true
+  - type: textarea
+    id: check
+    attributes:
+      label: "`dockhand-mcp check` output"
+      description: Secrets are already masked in it; remove hostnames and names too.
+      render: json
+  - type: textarea
+    id: logs
+    attributes:
+      label: Server log lines (sanitized)
+      render: text
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: Before submitting
+      options:
+        - label: This is not a security vulnerability.
+          required: true
+        - label: I removed tokens, hostnames and other deployment details.
+          required: true

@@ -1,0 +1,18 @@
+{
+  "_comment": "Invented; the spec gives no 200 schema. Shape follows live DockHand (settingsOnly=true).",
+  "body": {
+    "settings": {
+      "scanner": "grype",
+      "grypeArgs": "",
+      "trivyArgs": "",
+      "grypeImage": "anchore/grype:latest",
+      "trivyImage": "aquasec/trivy:latest"
+    },
+    "defaults": {
+      "grypeArgs": "",
+      "trivyArgs": "",
+      "networkMode": "bridge",
+      "dns": []
+    }
+  }
+}

@@ -1,0 +1,162 @@
+{
+  "_comment": "Invented from DockHand 1.0.46's source (src/lib/server/scanner.ts, scanImage with scanner 'both'): one scanner fails (a scan-progress event with stage 'error', no throw), the other completes, and scan-complete carries only its result. The job ends with result {status: complete}. Not observed live. {{SCAN_ERROR}} is filled in by the test.",
+  "body": {
+    "id": "4c3b2a19-8f7e-4d6c-9b5a-1f2e3d4c5b6a",
+    "status": "done",
+    "lines": [
+      {
+        "event": "progress",
+        "data": {
+          "status": "Pulling from library/nginx",
+          "id": "1.28"
+        }
+      },
+      {
+        "event": "progress",
+        "data": {
+          "status": "Pulling fs layer",
+          "progressDetail": {},
+          "id": "layer1"
+        }
+      },
+      {
+        "event": "progress",
+        "data": {
+          "status": "Download complete",
+          "progressDetail": {},
+          "id": "layer1"
+        }
+      },
+      {
+        "event": "progress",
+        "data": {
+          "status": "Pull complete",
+          "progressDetail": {},
+          "id": "layer1"
+        }
+      },
+      {
+        "event": "progress",
+        "data": {
+          "status": "Digest: sha256:{{DIGEST_NGINX}}"
+        }
+      },
+      {
+        "event": "progress",
+        "data": {
+          "status": "Status: Downloaded newer image for nginx:1.28"
+        }
+      },
+      {
+        "event": "progress",
+        "data": {
+          "status": "complete"
+        }
+      },
+      {
+        "event": "progress",
+        "data": {
+          "status": "scanning",
+          "message": "Starting vulnerability scan..."
+        }
+      },
+      {
+        "event": "progress",
+        "data": {
+          "status": "scan-progress",
+          "stage": "scanning",
+          "message": "Scanning nginx:1.28 with Grype...",
+          "scanner": "grype",
+          "progress": 50,
+          "output": "[0003]  INFO found 1 vulnerability matches across 1 packages"
+        }
+      },
+      {
+        "event": "progress",
+        "data": {
+          "status": "scan-progress",
+          "stage": "complete",
+          "message": "Grype scan complete: 0 critical, 0 high, 1 medium, 0 low",
+          "scanner": "grype",
+          "progress": 100,
+          "result": {
+            "imageId": "sha256:{{IMG_NGINX}}",
+            "imageName": "nginx:1.28",
+            "scanner": "grype",
+            "scannedAt": "2026-01-31T12:00:00.000Z",
+            "vulnerabilities": [
+              {
+                "id": "CVE-2026-0001",
+                "severity": "medium",
+                "package": "libexample",
+                "version": "1.0.0",
+                "description": "Example finding."
+              }
+            ],
+            "summary": {
+              "critical": 0,
+              "high": 0,
+              "medium": 1,
+              "low": 0,
+              "negligible": 0,
+              "unknown": 0
+            },
+            "scanDuration": 2100
+          }
+        }
+      },
+      {
+        "event": "progress",
+        "data": {
+          "status": "scan-progress",
+          "stage": "error",
+          "message": "Trivy scan failed: {{SCAN_ERROR}}",
+          "scanner": "trivy",
+          "error": "{{SCAN_ERROR}}"
+        }
+      },
+      {
+        "event": "progress",
+        "data": {
+          "status": "scan-complete",
+          "message": "Scan complete - found 1 vulnerabilities",
+          "results": [
+            {
+              "imageId": "sha256:{{IMG_NGINX}}",
+              "imageName": "nginx:1.28",
+              "scanner": "grype",
+              "scannedAt": "2026-01-31T12:00:00.000Z",
+              "vulnerabilities": [
+                {
+                  "id": "CVE-2026-0001",
+                  "severity": "medium",
+                  "package": "libexample",
+                  "version": "1.0.0",
+                  "description": "Example finding."
+                }
+              ],
+              "summary": {
+                "critical": 0,
+                "high": 0,
+                "medium": 1,
+                "low": 0,
+                "negligible": 0,
+                "unknown": 0
+              },
+              "scanDuration": 2100
+            }
+          ]
+        }
+      },
+      {
+        "event": "result",
+        "data": {
+          "status": "complete"
+        }
+      }
+    ],
+    "result": {
+      "status": "complete"
+    }
+  }
+}

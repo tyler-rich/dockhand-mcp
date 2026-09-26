@@ -1,0 +1,14 @@
+{
+  "_comment": "Invented; the spec gives no 200 schema for GET /api/git/stacks/{id}.",
+  "body": {
+    "id": 4,
+    "stackName": "tools",
+    "environmentId": 7,
+    "repositoryId": 1,
+    "composePath": "compose.yaml",
+    "envFilePath": ".env",
+    "autoUpdate": false,
+    "webhookEnabled": false,
+    "webhookSecret": null
+  }
+}

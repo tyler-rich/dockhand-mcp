@@ -1,0 +1,11 @@
+{
+  "_comment": "Invented; the spec's 200 schema is an untyped object keyed by container name.",
+  "body": {
+    "web": {
+      "enabled": true,
+      "scheduleType": "daily",
+      "cronExpression": "0 4 * * *",
+      "vulnerabilityCriteria": "never"
+    }
+  }
+}

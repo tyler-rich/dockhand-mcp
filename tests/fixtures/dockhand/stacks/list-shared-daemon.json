@@ -1,0 +1,34 @@
+{
+  "_comment": "Invented, in the shape live DockHand 1.0.46 answered in S3g for an environment whose Docker daemon it shares with another environment: stacks with a source record here carry sourceType; compose projects discovered from container labels (here, another environment's) carry none. {{NAME}} placeholders are filled at load time.",
+  "body": [
+    {
+      "name": "tools",
+      "containers": [],
+      "containerDetails": [],
+      "updatesAvailable": false,
+      "updateCount": 0,
+      "newerVersionCount": 0,
+      "status": "stopped",
+      "sourceType": "internal",
+      "icon": null
+    },
+    {
+      "name": "shop",
+      "containers": [
+        "{{CID_WEB}}",
+        "{{CID_DB}}"
+      ],
+      "containerDetails": [
+        {
+          "id": "{{CID_WEB}}",
+          "name": "web",
+          "state": "running"
+        }
+      ],
+      "updatesAvailable": false,
+      "updateCount": 0,
+      "newerVersionCount": 0,
+      "status": "running"
+    }
+  ]
+}

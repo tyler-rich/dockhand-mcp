@@ -1,0 +1,15 @@
+{
+  "_comment": "Invented from the DockHand 1.0.46 spec schema, with the key casing live DockHand uses; not a recorded response. {{NAME}} placeholders are filled at load time.",
+  "body": {
+    "id": 3,
+    "environmentId": 7,
+    "triggeredBy": "manual",
+    "triggeredAt": "2026-01-02T03:04:05.000Z",
+    "startedAt": "2026-01-02T03:04:05.000Z",
+    "completedAt": "2026-01-02T03:04:05.000Z",
+    "duration": 12,
+    "status": "success",
+    "errorMessage": null,
+    "details": {}
+  }
+}

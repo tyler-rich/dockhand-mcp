@@ -1,0 +1,19 @@
+{
+  "_comment": "Invented SSE stream from the DockHand 1.0.46 spec's 200 description (progress events, a final result event); not recorded. Each entry is [event, data].",
+  "body": {
+    "events": [
+      [
+        "progress",
+        {
+          "stage": "scanning"
+        }
+      ],
+      [
+        "result",
+        {
+          "success": true
+        }
+      ]
+    ]
+  }
+}

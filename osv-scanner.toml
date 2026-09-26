@@ -1,0 +1,25 @@
+# OSV-Scanner configuration: vulnerability exceptions for uv.lock (ci, every PR) and the image
+# (release.yml before every push, image-scan.yml weekly).
+#
+# What fails (plan S-09):
+#   - uv.lock: any finding.
+#   - the image (scripts/osv-image-gate.py, both platforms): a finding outside the image's Debian
+#     packages; a Debian finding with a fixed version in the image's Debian release (trixie); an
+#     unfixed finding with CVSS >= 9.0. Findings Debian triages as unimportant, and other unfixed
+#     Debian findings, are listed in the job summary without failing.
+#
+# Policy: the list is empty by default. An exception is a STOP-and-ask for the maintainer, never a
+# way to get CI green, and the only way to pass a failing finding. Every entry needs:
+#   - id          the OSV/GHSA/CVE identifier
+#   - reason      why it does not apply here, or what we are waiting for
+#   - ignoreUntil a date (YYYY-MM-DD) at most 90 days after the entry is added
+# and a dated docs/ARCHIVE.md §14 entry recording the decision. When ignoreUntil passes, the
+# finding fails again; renew only with a fresh decision.
+#
+# Example:
+#   [[IgnoredVulns]]
+#   id = "GHSA-xxxx-xxxx-xxxx"
+#   ignoreUntil = 2026-12-01
+#   reason = "Vulnerable function is not reachable: ... Upstream fix expected in x.y.z."
+
+IgnoredVulns = []

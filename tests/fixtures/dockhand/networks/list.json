@@ -1,0 +1,27 @@
+{
+  "_comment": "Invented. Live DockHand uses lowercase keys (id, name); the spec documents Id, Name. {{NAME}} placeholders are filled at load time.",
+  "body": [
+    {
+      "id": "{{NID_FRONT}}",
+      "name": "front",
+      "driver": "bridge",
+      "scope": "local",
+      "internal": false,
+      "ipam": {
+        "driver": "default"
+      },
+      "containers": {}
+    },
+    {
+      "id": "{{NID_BACK}}",
+      "name": "back",
+      "driver": "bridge",
+      "scope": "local",
+      "internal": true,
+      "ipam": {
+        "driver": "default"
+      },
+      "containers": {}
+    }
+  ]
+}

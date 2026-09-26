@@ -1,0 +1,16 @@
+{
+  "_comment": "Recorded from live DockHand 1.0.46 (S3c: a batch unpause of one paused and one running container) and sanitized: ids, names and the job id are replaced. Lines carry only `data` (no `event` key). {{NAME}} placeholders are filled at load time.",
+  "body": {
+    "id": "4c3b2a19-8f7e-4d6c-9b5a-1f2e3d4c5b6a",
+    "status": "done",
+    "lines": [
+      {"data": {"type": "start", "total": 2}},
+      {"data": {"type": "progress", "id": "{{CID_WEB}}", "name": "web", "status": "processing", "current": 1, "total": 2}},
+      {"data": {"type": "progress", "id": "{{CID_DB}}", "name": "db", "status": "processing", "current": 2, "total": 2}},
+      {"data": {"type": "progress", "id": "{{CID_DB}}", "name": "db", "status": "error", "error": "Container {{CID_DB}} is not paused", "current": 2, "total": 2}},
+      {"data": {"type": "progress", "id": "{{CID_WEB}}", "name": "web", "status": "success", "current": 1, "total": 2}},
+      {"data": {"type": "complete", "summary": {"total": 2, "success": 1, "failed": 1}}}
+    ],
+    "result": {"type": "complete", "summary": {"total": 2, "success": 1, "failed": 1}}
+  }
+}

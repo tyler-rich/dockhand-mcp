@@ -1,0 +1,16 @@
+{
+  "_comment": "Invented from the DockHand 1.0.46 spec schema, with the key casing live DockHand uses; not a recorded response. {{NAME}} placeholders are filled at load time.",
+  "body": {
+    "cpuPercent": 1.5,
+    "memoryUsage": 1000,
+    "memoryRaw": 1200,
+    "memoryCache": 200,
+    "memoryLimit": 100000,
+    "memoryPercent": 1.0,
+    "networkRx": 10,
+    "networkTx": 20,
+    "blockRead": 0,
+    "blockWrite": 0,
+    "timestamp": 1767323045000
+  }
+}

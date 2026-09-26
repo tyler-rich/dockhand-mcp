@@ -1,0 +1,19 @@
+{
+  "_comment": "Invented from the DockHand 1.0.46 spec schema, with the key casing live DockHand uses; not a recorded response. {{NAME}} placeholders are filled at load time.",
+  "body": [
+    {
+      "Id": "sha256:{{IMG_NGINX}}",
+      "Created": 1767323045,
+      "CreatedBy": "CMD [\"nginx\"]",
+      "Size": 0,
+      "Comment": ""
+    },
+    {
+      "Id": "<missing>",
+      "Created": 1767323000,
+      "CreatedBy": "ADD rootfs /",
+      "Size": 600,
+      "Comment": ""
+    }
+  ]
+}

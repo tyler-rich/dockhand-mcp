@@ -1,0 +1,42 @@
+# dockhand-mcp for stack editors that keep environment values in an encrypted store (DockHand's
+# stack environment, Portainer's environment editor). Same hardening as docker-compose.yml, with no
+# `secrets:` block: DOCKHAND_TOKEN and DOCKHAND_MCP_TOKEN come from `${…}` references whose
+# values you set in the tool's env editor, marked secret where it offers that. Never write the
+# values into this file. Generate DOCKHAND_MCP_TOKEN with:
+#   python -c "import secrets;print(secrets.token_urlsafe(48))"
+#
+# Don't deploy this stack through a DockHand environment that shares its Docker daemon with
+# another DockHand environment (docs/DOCKHAND-SETUP.md, "Environments and Docker daemons").
+services:
+  dockhand-mcp:
+    # Pin by digest: copy the image line from the release notes (…:X.Y.Z@sha256:…).
+    image: ghcr.io/tyler-rich/dockhand-mcp:0.1.0
+    # Fail-closed startup: see the comment in docker-compose.yml.
+    restart: unless-stopped
+    user: "10001:10001"
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid,nodev
+    ports:
+      - "127.0.0.1:8080:8080"          # or omit and put it on your reverse-proxy network
+    environment:
+      DOCKHAND_URL: https://dockhand.example.test
+      DOCKHAND_TOKEN: ${DOCKHAND_TOKEN}             # value lives in the tool's encrypted env store
+      DOCKHAND_MCP_TOKEN: ${DOCKHAND_MCP_TOKEN}     # value lives in the tool's encrypted env store
+      DOCKHAND_MCP_PROFILE: operator                # admin only while you need destructive tools
+      # DOCKHAND_MCP_CONFIRM_MODE: elicitation      # with MCP 2026-07-28 clients (docs/CLIENTS.md)
+      DOCKHAND_MCP_BIND: 0.0.0.0        # inside the container; exposure is controlled by `ports`
+      DOCKHAND_MCP_ALLOWED_HOSTS: localhost,127.0.0.1,mcp.example.test
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    deploy:
+      resources:
+        limits: { cpus: "0.50", memory: 256M, pids: 128 }
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys;sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8080/healthz',timeout=3).status==200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }

@@ -1,0 +1,10 @@
+{
+  "_comment": "Invented from the DockHand 1.0.46 spec 200 schema, plus a repository object carrying a webhookSecret key (as live list responses do) to exercise the key-based redaction; not a recorded response. {{NAME}} placeholders are filled at load time.",
+  "body": {
+    "success": true,
+    "repository": {
+      "id": 1,
+      "webhookSecret": "{{SECRET}}"
+    }
+  }
+}

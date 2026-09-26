@@ -1,0 +1,206 @@
+# One required job, pull requests only (plan S-09); sized when the repo was private with a monthly
+# Actions-minutes budget, and kept lean since. The first step classifies the changed paths so a
+# docs-only PR passes in seconds; the job always reports a status, so the required check never hangs.
+# release.yml runs this same job first through workflow_call (on a tag push), with every step on.
+name: ci
+
+on:
+  pull_request:
+    branches: [dev, main]
+  workflow_call:
+
+concurrency:
+  # Keyed by PR number, not branch name: a fork's branch may share a name with another PR's.
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  OSV_SCANNER_VERSION: v2.6.0
+  # sha256 of osv-scanner_linux_amd64 from the release above (its osv-scanner_SHA256SUMS).
+  OSV_SCANNER_SHA256: ca69b3d3cd08f889a49dc0a383122f71cc528b83803671df5fd874d97485b108
+  SEMGREP_VERSION: 1.178.0
+  GITLEAKS_VERSION: 8.30.1
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      pull-requests: read # gitleaks-action lists the PR's commits through the API
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # the path classifier diffs against the base; gitleaks scans the PR's commits
+          persist-credentials: false
+
+      - name: Classify changed paths
+        id: changes
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT" != pull_request ]; then
+            # Called by release.yml: run everything.
+            { echo "code=true"; echo "src=true"; echo "image=true"; } >> "$GITHUB_OUTPUT"
+            echo "Event $EVENT: every check runs."
+            exit 0
+          fi
+          code=false src=false image=false
+          while IFS= read -r f; do
+            [ -n "$f" ] || continue
+            case "$f" in
+              docs/*) ;;
+              */*) code=true ;;
+              *.md) ;;
+              *) code=true ;;
+            esac
+            case "$f" in src/*) src=true ;; esac
+            case "$f" in Dockerfile|.dockerignore|pyproject.toml|uv.lock|src/*) image=true ;; esac
+          done < <(git diff --name-only "$BASE_SHA" HEAD)
+          echo "code=$code src=$src image=$image"
+          { echo "code=$code"; echo "src=$src"; echo "image=$image"; } >> "$GITHUB_OUTPUT"
+          if [ "$code" = false ]; then
+            echo "Docs-only change: nothing else to run." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        if: steps.changes.outputs.code == 'true'
+        with:
+          enable-cache: true
+
+      - name: uv sync --frozen
+        if: steps.changes.outputs.code == 'true'
+        run: uv sync --frozen
+
+      - name: ruff check
+        if: steps.changes.outputs.code == 'true'
+        run: uv run ruff check .
+
+      - name: ruff format --check
+        if: steps.changes.outputs.code == 'true'
+        run: uv run ruff format --check .
+
+      - name: mypy --strict
+        if: steps.changes.outputs.code == 'true'
+        run: uv run mypy --strict src
+
+      - name: pytest
+        if: steps.changes.outputs.code == 'true'
+        run: uv run pytest -q
+
+      - name: gitleaks
+        if: steps.changes.outputs.code == 'true'
+        uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_VERSION: ${{ env.GITLEAKS_VERSION }}
+          GITLEAKS_ENABLE_COMMENTS: "false" # needs pull-requests: write; the job summary suffices
+
+      - name: deps-current (D-013)
+        if: steps.changes.outputs.code == 'true'
+        run: |
+          fail=0
+          cp uv.lock "$RUNNER_TEMP/uv.lock.committed"
+          uv lock --upgrade --quiet
+          if ! diff -u "$RUNNER_TEMP/uv.lock.committed" uv.lock; then
+            echo "::error file=uv.lock::uv.lock is behind the newest releases; run 'uv lock --upgrade' and commit the result"
+            fail=1
+          fi
+          cp "$RUNNER_TEMP/uv.lock.committed" uv.lock
+
+          # Newest stable CPython minor, from python.org's release API (published, non-pre-release).
+          latest=$(python3 - <<'EOF'
+          import json, re, urllib.request
+          url = "https://www.python.org/api/v2/downloads/release/?is_published=true&pre_release=false"
+          with urllib.request.urlopen(url, timeout=30) as r:
+              releases = json.load(r)
+          minors = {tuple(map(int, m.groups())) for rel in releases
+                    if (m := re.fullmatch(r"Python (3)\.(\d+)\.\d+", rel["name"]))}
+          print("%d.%d" % max(minors))
+          EOF
+          )
+          echo "Newest stable CPython minor: $latest"
+          for tag in $(grep -oE '^FROM python:[0-9]+\.[0-9]+' Dockerfile | cut -d: -f2); do
+            if [ "$tag" != "$latest" ]; then
+              echo "::error file=Dockerfile::base image python:$tag is not the newest stable minor ($latest)"
+              fail=1
+            fi
+          done
+          if [ "$(tr -d '[:space:]' < .python-version)" != "$latest" ]; then
+            echo "::error file=.python-version::.python-version is not the newest stable minor ($latest)"
+            fail=1
+          fi
+          exit $fail
+
+      - name: OSV-Scanner (uv.lock)
+        if: steps.changes.outputs.code == 'true'
+        run: |
+          bin="$RUNNER_TEMP/osv-scanner"
+          python3 -c "import sys,urllib.request;urllib.request.urlretrieve(sys.argv[1],sys.argv[2])" \
+            "https://github.com/google/osv-scanner/releases/download/${OSV_SCANNER_VERSION}/osv-scanner_linux_amd64" "$bin"
+          echo "${OSV_SCANNER_SHA256}  $bin" | sha256sum --check --strict
+          chmod +x "$bin"
+          "$bin" scan source --config osv-scanner.toml --lockfile uv.lock
+
+      - name: Semgrep CE (src/)
+        if: steps.changes.outputs.src == 'true'
+        run: uvx "semgrep@${SEMGREP_VERSION}" scan --config p/python --config p/security-audit --error --metrics=off src/
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+        if: steps.changes.outputs.image == 'true'
+
+      - name: Docker build (no push)
+        if: steps.changes.outputs.image == 'true'
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          push: false
+          load: true
+          tags: dockhand-mcp:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Hardened run, /healthz returns 200
+        if: steps.changes.outputs.image == 'true'
+        run: |
+          # With no DOCKHAND_TOKEN, serve must confirm DockHand auth is off (SECURITY §6) and
+          # fails closed when DockHand is unreachable, as it is here. A fake token, generated at
+          # runtime so no token-shaped literal is committed, skips that probe.
+          fake_token="dh_$(head -c 32 /dev/urandom | base64 | tr -dc 'A-Za-z0-9')"
+          docker run -d --name dmcp-ci \
+            --read-only --tmpfs /tmp:size=16m,noexec,nosuid,nodev \
+            --cap-drop ALL --security-opt no-new-privileges --user 10001:10001 \
+            --health-interval 2s --health-start-period 0s \
+            -e DOCKHAND_URL=https://dockhand.example.test \
+            -e DOCKHAND_TOKEN="$fake_token" \
+            -e DOCKHAND_MCP_AUTH_MODE=none \
+            -e DOCKHAND_MCP_ALLOW_UNAUTHENTICATED=true \
+            -e DOCKHAND_MCP_BIND=127.0.0.1 \
+            dockhand-mcp:ci
+          for _ in $(seq 30); do
+            status=$(docker inspect --format '{{.State.Health.Status}}' dmcp-ci)
+            [ "$status" = starting ] || break
+            sleep 2
+          done
+          echo "health: $status"
+          docker exec dmcp-ci python -c "import urllib.request as u;r=u.urlopen('http://127.0.0.1:8080/healthz',timeout=3);b=r.read();print(r.status,b);assert r.status==200 and b==b'{\"status\":\"ok\"}'"
+          [ "$status" = healthy ]
+
+      - name: Image ships /licenses/LICENSE and /licenses/NOTICE (D-015)
+        if: steps.changes.outputs.image == 'true'
+        run: |
+          for f in LICENSE NOTICE; do
+            docker exec dmcp-ci python -c "import sys;sys.stdout.buffer.write(open('/licenses/$f','rb').read())" \
+              | cmp - "$f"
+            echo "/licenses/$f matches the repository's $f"
+          done
+
+      - name: Container logs
+        if: always() && steps.changes.outputs.image == 'true'
+        run: |
+          docker logs dmcp-ci 2>&1 | tail -n 50 || true
+          docker rm -f dmcp-ci >/dev/null 2>&1 || true

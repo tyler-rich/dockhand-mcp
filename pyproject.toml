@@ -1,0 +1,61 @@
+[project]
+name = "dockhand-mcp"
+version = "0.1.0"
+description = "Security-first MCP server exposing a curated, profile-gated subset of the DockHand REST API."
+readme = "README.md"
+requires-python = ">=3.14"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+authors = [{ name = "tyler-rich" }]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.14",
+    "Typing :: Typed",
+]
+dependencies = [
+    "httpx>=0.28.1",
+    "mcp>=2.2.0",
+    "pydantic>=2.13.5",
+    "pydantic-settings>=2.15.0",
+    "pyyaml>=6.0.3",
+]
+
+[project.scripts]
+dockhand-mcp = "dockhand_mcp.__main__:main"
+
+[dependency-groups]
+dev = [
+    "mypy>=2.3.1",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+    "respx>=0.23.1",
+    "ruff>=0.16.8",
+    "types-pyyaml>=6.0.12.20260906",
+]
+
+[build-system]
+requires = ["uv_build>=0.12.19,<0.13"]
+build-backend = "uv_build"
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "S", "N", "ASYNC", "RUF"]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests assert, and use obviously fake tokens.
+"tests/**" = ["S101", "S105", "S106"]
+# Generator for the tier map; its rules are a security decision, so style-only lint is not
+# worth an edit. Formatting is applied (AST-identical).
+"scripts/gen-endpoint-map.py" = ["E501", "UP031", "B007"]
+
+[tool.mypy]
+python_version = "3.14"
+strict = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

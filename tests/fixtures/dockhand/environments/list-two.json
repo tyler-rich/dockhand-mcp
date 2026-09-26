@@ -1,0 +1,31 @@
+{
+  "_comment": "Invented from the DockHand 1.0.46 spec schema, with the key casing live DockHand uses; not a recorded response. {{NAME}} placeholders are filled at load time.",
+  "body": [
+    {
+      "id": 7,
+      "name": "env-seven",
+      "connectionType": "socket",
+      "host": null,
+      "port": 2375,
+      "protocol": "http",
+      "icon": "server",
+      "publicIp": null,
+      "timezone": "UTC",
+      "hasTlsKey": false,
+      "hasHawserToken": false
+    },
+    {
+      "id": 8,
+      "name": "env-eight",
+      "connectionType": "socket",
+      "host": null,
+      "port": 2375,
+      "protocol": "http",
+      "icon": "server",
+      "publicIp": null,
+      "timezone": "UTC",
+      "hasTlsKey": false,
+      "hasHawserToken": false
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+# Invented guardrail fixture: privileged hidden in an x- anchor, pulled in by a merge key.
+x-hardening: &hardening
+  privileged: true
+  restart: unless-stopped
+services:
+  web:
+    <<: *hardening
+    image: nginx:1.27

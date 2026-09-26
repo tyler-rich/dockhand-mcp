@@ -1,0 +1,21 @@
+{
+  "_comment": "Invented; the spec gives no 200 schema. Live DockHand keys sources by stack name.",
+  "body": {
+    "shop": {
+      "sourceType": "internal",
+      "composePath": "/data/stacks/shop/compose.yaml",
+      "repository": null,
+      "secretProviderId": null,
+      "icon": null,
+      "envVarCount": 2
+    },
+    "tools": {
+      "sourceType": "git",
+      "composePath": "/data/git/tools/compose.yaml",
+      "repository": "infra",
+      "secretProviderId": null,
+      "icon": null,
+      "envVarCount": 0
+    }
+  }
+}

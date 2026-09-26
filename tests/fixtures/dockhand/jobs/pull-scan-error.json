@@ -1,0 +1,91 @@
+{
+  "_comment": "Invented from DockHand 1.0.46's source (src/routes/api/images/pull/+server.ts, handleScanOnPull): when the scan throws, a progress event {status: 'scan-error', error} is sent and the job still ends with result {status: complete}. Not observed live: provoking it would need a scanner settings change. {{SCAN_ERROR}} is filled in by the test.",
+  "body": {
+    "id": "4c3b2a19-8f7e-4d6c-9b5a-1f2e3d4c5b6a",
+    "status": "done",
+    "lines": [
+      {
+        "event": "progress",
+        "data": {
+          "status": "Pulling from library/nginx",
+          "id": "1.28"
+        }
+      },
+      {
+        "event": "progress",
+        "data": {
+          "status": "Pulling fs layer",
+          "progressDetail": {},
+          "id": "layer1"
+        }
+      },
+      {
+        "event": "progress",
+        "data": {
+          "status": "Download complete",
+          "progressDetail": {},
+          "id": "layer1"
+        }
+      },
+      {
+        "event": "progress",
+        "data": {
+          "status": "Pull complete",
+          "progressDetail": {},
+          "id": "layer1"
+        }
+      },
+      {
+        "event": "progress",
+        "data": {
+          "status": "Digest: sha256:{{DIGEST_NGINX}}"
+        }
+      },
+      {
+        "event": "progress",
+        "data": {
+          "status": "Status: Downloaded newer image for nginx:1.28"
+        }
+      },
+      {
+        "event": "progress",
+        "data": {
+          "status": "complete"
+        }
+      },
+      {
+        "event": "progress",
+        "data": {
+          "status": "scanning",
+          "message": "Starting vulnerability scan..."
+        }
+      },
+      {
+        "event": "progress",
+        "data": {
+          "status": "scan-progress",
+          "stage": "error",
+          "message": "Grype scan failed: {{SCAN_ERROR}}",
+          "scanner": "grype",
+          "error": "{{SCAN_ERROR}}"
+        }
+      },
+      {
+        "event": "progress",
+        "data": {
+          "status": "scan-error",
+          "error": "{{SCAN_ERROR}}"
+        }
+      },
+      {
+        "event": "result",
+        "data": {
+          "status": "complete"
+        }
+      }
+    ],
+    "result": {
+      "status": "complete"
+    }
+  }
+}

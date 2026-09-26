@@ -1,0 +1,44 @@
+{
+  "_comment": "Invented. Live DockHand uses lowercase keys (id, repoTags); the spec documents Id, RepoTags. {{NAME}} placeholders are filled at load time.",
+  "body": [
+    {
+      "id": "sha256:{{IMG_NGINX}}",
+      "repoTags": [
+        "nginx:1.27"
+      ],
+      "tags": [
+        "1.27"
+      ],
+      "repoDigests": [
+        "nginx@sha256:{{DIGEST_NGINX}}"
+      ],
+      "size": 600,
+      "created": 1767323045,
+      "containers": 1
+    },
+    {
+      "id": "sha256:{{IMG_REDIS}}",
+      "repoTags": [
+        "redis:7",
+        "redis:latest"
+      ],
+      "tags": [
+        "7",
+        "latest"
+      ],
+      "repoDigests": [],
+      "size": 400,
+      "created": 1767323045,
+      "containers": 1
+    },
+    {
+      "id": "sha256:{{IMG_DANGLING}}",
+      "repoTags": [],
+      "tags": [],
+      "repoDigests": [],
+      "size": 50,
+      "created": 1767323045,
+      "containers": 0
+    }
+  ]
+}

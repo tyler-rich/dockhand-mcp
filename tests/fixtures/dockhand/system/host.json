@@ -1,0 +1,21 @@
+{
+  "_comment": "Invented from the DockHand 1.0.46 spec schema, with the key casing live DockHand uses; not a recorded response. {{NAME}} placeholders are filled at load time.",
+  "body": {
+    "hostname": "example-host",
+    "ipAddress": "192.0.2.10",
+    "platform": "linux",
+    "arch": "x64",
+    "cpus": 4,
+    "totalMemory": 8000000000,
+    "freeMemory": 4000000000,
+    "uptime": 3600,
+    "dockerVersion": "29.0.0",
+    "dockerContainers": 3,
+    "dockerContainersRunning": 2,
+    "dockerImages": 3,
+    "environment": {
+      "id": 7,
+      "name": "env-seven"
+    }
+  }
+}

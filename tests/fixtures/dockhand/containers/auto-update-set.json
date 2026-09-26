@@ -1,0 +1,11 @@
+{
+  "_comment": "Invented from the DockHand 1.0.46 spec 200 schema; not a recorded response. {{NAME}} placeholders are filled at load time.",
+  "body": {
+    "id": 5,
+    "enabled": true,
+    "scheduleType": "cron",
+    "cronExpression": "0 4 * * *",
+    "vulnerabilityCriteria": "never",
+    "success": true
+  }
+}

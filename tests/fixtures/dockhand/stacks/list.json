@@ -1,0 +1,49 @@
+{
+  "_comment": "Invented; the spec gives no 200 schema for GET /api/stacks. Shape follows live DockHand's keys. {{NAME}} placeholders are filled at load time.",
+  "body": [
+    {
+      "name": "shop",
+      "containers": [
+        "web",
+        "db"
+      ],
+      "containerDetails": [
+        {
+          "id": "{{CID_WEB}}",
+          "name": "web",
+          "state": "running"
+        }
+      ],
+      "updatesAvailable": true,
+      "updateCount": 1,
+      "newerVersionCount": 0,
+      "status": "running",
+      "sourceType": "internal",
+      "icon": null
+    },
+    {
+      "name": "tools",
+      "containers": [],
+      "containerDetails": [],
+      "updatesAvailable": false,
+      "updateCount": 0,
+      "newerVersionCount": 0,
+      "status": "stopped",
+      "sourceType": "git",
+      "icon": null
+    },
+    {
+      "name": "legacy",
+      "containers": [
+        "worker"
+      ],
+      "containerDetails": [],
+      "updatesAvailable": false,
+      "updateCount": 0,
+      "newerVersionCount": 0,
+      "status": "partial",
+      "sourceType": "external",
+      "icon": null
+    }
+  ]
+}

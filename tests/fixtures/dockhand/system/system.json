@@ -1,0 +1,35 @@
+{
+  "_comment": "Invented from the DockHand 1.0.46 spec schema, with the key casing live DockHand uses; not a recorded response. {{NAME}} placeholders are filled at load time.",
+  "body": {
+    "docker": {
+      "version": "29.0.0",
+      "apiVersion": "1.52",
+      "os": "linux",
+      "arch": "amd64"
+    },
+    "host": {
+      "name": "example-host",
+      "cpus": 4,
+      "memory": 8000000000
+    },
+    "runtime": {
+      "nodeVersion": "v24.0.0",
+      "platform": "linux"
+    },
+    "database": {
+      "type": "sqlite",
+      "schemaVersion": "42"
+    },
+    "stats": {
+      "containers": {
+        "total": 3,
+        "running": 2,
+        "stopped": 1
+      },
+      "images": 3,
+      "volumes": 2,
+      "networks": 2,
+      "stacks": 2
+    }
+  }
+}

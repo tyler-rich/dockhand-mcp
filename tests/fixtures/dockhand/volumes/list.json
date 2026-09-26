@@ -1,0 +1,25 @@
+{
+  "_comment": "Invented. Live DockHand uses lowercase keys; the spec documents Name, Driver.",
+  "body": [
+    {
+      "name": "shop_data",
+      "driver": "local",
+      "mountpoint": "/var/lib/docker/volumes/shop_data/_data",
+      "scope": "local",
+      "created": "2026-01-02T03:04:05.000Z",
+      "labels": {},
+      "usedBy": [
+        "db"
+      ]
+    },
+    {
+      "name": "cache",
+      "driver": "local",
+      "mountpoint": "/var/lib/docker/volumes/cache/_data",
+      "scope": "local",
+      "created": "2026-01-02T03:04:05.000Z",
+      "labels": {},
+      "usedBy": []
+    }
+  ]
+}

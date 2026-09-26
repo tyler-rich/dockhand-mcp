@@ -1,0 +1,290 @@
+# Release (plan S-09, O-04). On a vX.Y.Z tag, in this order:
+#   1. the ci job's checks (reused through workflow_call);
+#   2. linux/amd64 and linux/arm64 built without pushing, one docker archive each;
+#   3. the OSV-Scanner image gate on both archives (scripts/osv-image-gate.py, osv-scanner.toml):
+#      a blocking finding stops the release before anything is published;
+#   4. push by digest from the same builder, a check that every pushed layer is a scanned layer,
+#      then the tags X.Y.Z, X.Y and latest (the last two only when this is the newest release);
+#   5. a CycloneDX SBOM per platform; 6. cosign keyless signature and SBOM attestations;
+#   7. the GitHub release with notes from ARCHIVE §14, LICENSE, NOTICE and the SBOMs.
+# Tags only, never PRs: it publishes, so only a maintainer's tag push can start it.
+name: release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions: {}
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  OSV_SCANNER_VERSION: v2.6.0
+  # sha256 of osv-scanner_linux_amd64 from the release above (its osv-scanner_SHA256SUMS).
+  OSV_SCANNER_SHA256: ca69b3d3cd08f889a49dc0a383122f71cc528b83803671df5fd874d97485b108
+  COSIGN_VERSION: v3.1.3
+  SYFT_VERSION: v1.52.0
+  # QEMU for the arm64 build: tonistiigi/binfmt's newest release (what :latest resolves to).
+  BINFMT_IMAGE: docker.io/tonistiigi/binfmt:qemu-v10.2.3@sha256:400a4873b838d1b89194d982c45e5fb3cda4593fbfd7e08a02e76b03b21166f0
+
+jobs:
+  checks:
+    permissions:
+      contents: read
+      pull-requests: read # requested by the reused ci job (gitleaks on PRs); unused on a tag push
+    uses: ./.github/workflows/ci.yml
+
+  release:
+    needs: checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: write # the GitHub release
+      packages: write # push to ghcr.io
+      id-token: write # keyless cosign signing with the workflow's OIDC identity
+    steps:
+      - name: Release tag is vX.Y.Z
+        id: meta
+        env:
+          TAG: ${{ github.ref_name }}
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          if ! [[ "$TAG" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+            echo "::error::release tags must look like vX.Y.Z (pre-releases are not published): $TAG"
+            exit 1
+          fi
+          {
+            echo "version=${TAG#v}"
+            echo "minor=${BASH_REMATCH[1]}.${BASH_REMATCH[2]}"
+            echo "image=ghcr.io/${OWNER,,}/dockhand-mcp"
+          } >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # every tag: the previous release's ARCHIVE and the newest-release check
+          persist-credentials: false
+
+      - name: Tag matches the package version
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+        run: |
+          grep -qx "version = \"$VERSION\"" pyproject.toml \
+            || { echo "::error file=pyproject.toml::version is not $VERSION"; exit 1; }
+          grep -qx "__version__ = \"$VERSION\"" src/dockhand_mcp/__init__.py \
+            || { echo "::error file=src/dockhand_mcp/__init__.py::__version__ is not $VERSION"; exit 1; }
+          echo "SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)" >> "$GITHUB_ENV"
+
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+
+      - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
+        with:
+          image: ${{ env.BINFMT_IMAGE }}
+          platforms: arm64
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      # OSV-Scanner reads only single-image docker archives, so each platform is exported on its
+      # own. The multi-arch push below reuses this builder's layers.
+      - name: Build linux/amd64 for scanning (no push)
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          platforms: linux/amd64
+          build-args: |
+            VERSION=${{ steps.meta.outputs.version }}
+            REVISION=${{ github.sha }}
+            SOURCE=${{ github.server_url }}/${{ github.repository }}
+          provenance: false
+          sbom: false
+          outputs: type=docker,dest=${{ runner.temp }}/image-linux-amd64.tar
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build linux/arm64 for scanning (no push)
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          platforms: linux/arm64
+          build-args: |
+            VERSION=${{ steps.meta.outputs.version }}
+            REVISION=${{ github.sha }}
+            SOURCE=${{ github.server_url }}/${{ github.repository }}
+          provenance: false
+          sbom: false
+          outputs: type=docker,dest=${{ runner.temp }}/image-linux-arm64.tar
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: OSV-Scanner image gate (both platforms, before any push)
+        run: |
+          bin="$RUNNER_TEMP/osv-scanner"
+          python3 -c "import sys,urllib.request;urllib.request.urlretrieve(sys.argv[1],sys.argv[2])" \
+            "https://github.com/google/osv-scanner/releases/download/${OSV_SCANNER_VERSION}/osv-scanner_linux_amd64" "$bin"
+          echo "${OSV_SCANNER_SHA256}  $bin" | sha256sum --check --strict
+          chmod +x "$bin"
+          for arch in amd64 arm64; do
+            rc=0
+            "$bin" scan image --config osv-scanner.toml --archive "$RUNNER_TEMP/image-linux-$arch.tar" \
+              --format json --output-file "$RUNNER_TEMP/osv-$arch.json" || rc=$?
+            # 0: no findings; 1: findings, judged by the gate below; anything else: the scan failed.
+            if [ "$rc" -ne 0 ] && [ "$rc" -ne 1 ]; then
+              echo "::error::OSV-Scanner failed on linux/$arch (exit $rc)"
+              exit 1
+            fi
+          done
+          rc=0
+          uv run --no-project scripts/osv-image-gate.py \
+            "linux/amd64=$RUNNER_TEMP/osv-amd64.json" "linux/arm64=$RUNNER_TEMP/osv-arm64.json" \
+            > "$RUNNER_TEMP/gate.md" || rc=$?
+          cat "$RUNNER_TEMP/gate.md" >> "$GITHUB_STEP_SUMMARY"
+          exit "$rc"
+
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push linux/amd64 + linux/arm64 by digest (no tags yet)
+        id: push
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          build-args: |
+            VERSION=${{ steps.meta.outputs.version }}
+            REVISION=${{ github.sha }}
+            SOURCE=${{ github.server_url }}/${{ github.repository }}
+          provenance: false
+          sbom: false
+          outputs: type=image,name=${{ steps.meta.outputs.image }},push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=gha
+
+      - name: Every pushed layer is a scanned layer
+        id: platforms
+        env:
+          IMAGE: ${{ steps.meta.outputs.image }}
+          DIGEST: ${{ steps.push.outputs.digest }}
+        run: |
+          [[ "$DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]] || { echo "::error::no pushed digest"; exit 1; }
+          docker buildx imagetools inspect "$IMAGE@$DIGEST" --format '{{json .Image}}' > "$RUNNER_TEMP/pushed.json"
+          docker buildx imagetools inspect "$IMAGE@$DIGEST" --raw > "$RUNNER_TEMP/index.json"
+          for arch in amd64 arm64; do
+            tar="$RUNNER_TEMP/image-linux-$arch.tar"
+            scanned=$(tar -xOf "$tar" "$(tar -xOf "$tar" manifest.json | jq -r '.[0].Config')" | jq -c '.rootfs.diff_ids')
+            pushed=$(jq -c --arg p "linux/$arch" '.[$p].rootfs.diff_ids' "$RUNNER_TEMP/pushed.json")
+            if [ "$scanned" != "$pushed" ] || [ "$pushed" = null ]; then
+              echo "::error::linux/$arch: the pushed layers are not the scanned ones; nothing was tagged"
+              exit 1
+            fi
+            manifest=$(jq -r --arg a "$arch" '.manifests[] | select(.platform.os=="linux" and .platform.architecture==$a) | .digest' "$RUNNER_TEMP/index.json")
+            [[ "$manifest" =~ ^sha256:[0-9a-f]{64}$ ]] || { echo "::error::no linux/$arch manifest"; exit 1; }
+            echo "$arch=$manifest" >> "$GITHUB_OUTPUT"
+            echo "linux/$arch: $(jq length <<<"$pushed") layers match the scanned archive; manifest $manifest"
+          done
+
+      - name: Tag X.Y.Z, X.Y and latest
+        id: tags
+        env:
+          IMAGE: ${{ steps.meta.outputs.image }}
+          DIGEST: ${{ steps.push.outputs.digest }}
+          VERSION: ${{ steps.meta.outputs.version }}
+          MINOR: ${{ steps.meta.outputs.minor }}
+        run: |
+          releases=$(git tag --list 'v*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V)
+          tags=("$IMAGE:$VERSION")
+          # Moving tags follow the newest release only, so a patch to an older line can't move them.
+          if [ "$(grep -E "^v${MINOR//./\\.}\." <<<"$releases" | tail -n1)" = "v$VERSION" ]; then
+            tags+=("$IMAGE:$MINOR")
+          fi
+          latest=false
+          if [ "$(tail -n1 <<<"$releases")" = "v$VERSION" ]; then
+            tags+=("$IMAGE:latest")
+            latest=true
+          fi
+          echo "latest=$latest" >> "$GITHUB_OUTPUT"
+          args=()
+          for t in "${tags[@]}"; do args+=(--tag "$t"); done
+          docker buildx imagetools create "${args[@]}" "$IMAGE@$DIGEST"
+          for t in "${tags[@]}"; do
+            got=$(docker buildx imagetools inspect "$t" --format '{{json .Manifest}}' | jq -r .digest)
+            [ "$got" = "$DIGEST" ] || { echo "::error::$t resolves to $got, not $DIGEST"; exit 1; }
+            echo "$t -> $DIGEST"
+          done
+
+      - name: SBOM linux/amd64 (CycloneDX)
+        uses: anchore/sbom-action@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
+        with:
+          image: ${{ steps.meta.outputs.image }}@${{ steps.platforms.outputs.amd64 }}
+          registry-username: ${{ github.actor }}
+          registry-password: ${{ secrets.GITHUB_TOKEN }}
+          format: cyclonedx-json
+          output-file: ${{ runner.temp }}/dockhand-mcp-${{ steps.meta.outputs.version }}-linux-amd64.cdx.json
+          syft-version: ${{ env.SYFT_VERSION }}
+          upload-artifact: false
+          upload-release-assets: false
+
+      - name: SBOM linux/arm64 (CycloneDX)
+        uses: anchore/sbom-action@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
+        with:
+          image: ${{ steps.meta.outputs.image }}@${{ steps.platforms.outputs.arm64 }}
+          registry-username: ${{ github.actor }}
+          registry-password: ${{ secrets.GITHUB_TOKEN }}
+          format: cyclonedx-json
+          output-file: ${{ runner.temp }}/dockhand-mcp-${{ steps.meta.outputs.version }}-linux-arm64.cdx.json
+          syft-version: ${{ env.SYFT_VERSION }}
+          upload-artifact: false
+          upload-release-assets: false
+
+      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+        with:
+          cosign-release: ${{ env.COSIGN_VERSION }}
+
+      - name: Sign (keyless) and attest the SBOMs
+        env:
+          IMAGE: ${{ steps.meta.outputs.image }}
+          DIGEST: ${{ steps.push.outputs.digest }}
+          AMD64: ${{ steps.platforms.outputs.amd64 }}
+          ARM64: ${{ steps.platforms.outputs.arm64 }}
+          VERSION: ${{ steps.meta.outputs.version }}
+          IDENTITY: ${{ github.server_url }}/${{ github.repository }}/.github/workflows/release.yml@${{ github.ref }}
+        run: |
+          # --recursive signs the index and each platform manifest.
+          cosign sign --yes --recursive "$IMAGE@$DIGEST"
+          cosign attest --yes --type cyclonedx \
+            --predicate "$RUNNER_TEMP/dockhand-mcp-$VERSION-linux-amd64.cdx.json" "$IMAGE@$AMD64"
+          cosign attest --yes --type cyclonedx \
+            --predicate "$RUNNER_TEMP/dockhand-mcp-$VERSION-linux-arm64.cdx.json" "$IMAGE@$ARM64"
+          # The same check the release notes give users, before the notes are published.
+          cosign verify "$IMAGE@$DIGEST" --certificate-identity="$IDENTITY" \
+            --certificate-oidc-issuer=https://token.actions.githubusercontent.com > /dev/null
+          cosign verify-attestation --type cyclonedx "$IMAGE@$AMD64" --certificate-identity="$IDENTITY" \
+            --certificate-oidc-issuer=https://token.actions.githubusercontent.com > /dev/null
+          echo "Signed and verified: $IMAGE@$DIGEST" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          IMAGE: ${{ steps.meta.outputs.image }}
+          DIGEST: ${{ steps.push.outputs.digest }}
+          VERSION: ${{ steps.meta.outputs.version }}
+          LATEST: ${{ steps.tags.outputs.latest }}
+        run: |
+          git tag --list 'v*' > "$RUNNER_TEMP/tags.txt"
+          prev=$(uv run --no-project scripts/release-notes.py previous-tag --current "$TAG" --tags-file "$RUNNER_TEMP/tags.txt")
+          args=()
+          if [ -n "$prev" ]; then
+            git show "$prev:docs/ARCHIVE.md" > "$RUNNER_TEMP/archive-previous.md"
+            args=(--previous-archive "$RUNNER_TEMP/archive-previous.md" --previous-tag "$prev")
+          fi
+          uv run --no-project scripts/release-notes.py notes --tag "$TAG" --archive docs/ARCHIVE.md "${args[@]}" \
+            --image "$IMAGE" --digest "$DIGEST" --repository "$GITHUB_REPOSITORY" > "$RUNNER_TEMP/notes.md"
+          gh release create "$TAG" --verify-tag --title "dockhand-mcp $TAG" \
+            --notes-file "$RUNNER_TEMP/notes.md" --latest="$LATEST" \
+            LICENSE NOTICE \
+            "$RUNNER_TEMP/dockhand-mcp-$VERSION-linux-amd64.cdx.json" \
+            "$RUNNER_TEMP/dockhand-mcp-$VERSION-linux-arm64.cdx.json"
+          echo "Image: \`$IMAGE:$VERSION@$DIGEST\`" >> "$GITHUB_STEP_SUMMARY"

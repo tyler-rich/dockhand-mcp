@@ -1,0 +1,28 @@
+{
+  "_comment": "Invented from the DockHand 1.0.46 spec schema, with the key casing live DockHand uses; not a recorded response. {{NAME}} placeholders are filled at load time.",
+  "body": {
+    "events": [
+      {
+        "id": 5,
+        "environmentId": 7,
+        "containerId": "{{CID_WEB}}",
+        "containerName": "web",
+        "image": "nginx:1.27",
+        "action": "start",
+        "timestamp": "2026-01-02T03:04:05.000Z"
+      },
+      {
+        "id": 4,
+        "environmentId": 7,
+        "containerId": "{{CID_WEB}}",
+        "containerName": "web",
+        "image": "nginx:1.27",
+        "action": "stop",
+        "timestamp": "2026-01-02T03:04:05.000Z"
+      }
+    ],
+    "total": 5,
+    "limit": 2,
+    "offset": 0
+  }
+}

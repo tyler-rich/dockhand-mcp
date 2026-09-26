@@ -1,0 +1,47 @@
+{
+  "_comment": "Invented; the spec's finding items are untyped. Shape follows live DockHand's keys.",
+  "body": {
+    "findings": [
+      {
+        "key": "CVE-2026-0001:openssl",
+        "cve": "CVE-2026-0001",
+        "package": "openssl",
+        "severity": "critical",
+        "installedVersion": "3.0.0",
+        "fixedVersion": "3.0.1",
+        "imageName": "nginx:1.27",
+        "containers": [
+          "web"
+        ],
+        "stacks": [
+          "shop"
+        ]
+      },
+      {
+        "key": "CVE-2026-0002:openssl",
+        "cve": "CVE-2026-0002",
+        "package": "openssl",
+        "severity": "high",
+        "installedVersion": "3.0.0",
+        "fixedVersion": "3.0.1",
+        "imageName": "nginx:1.27",
+        "containers": [
+          "web"
+        ],
+        "stacks": [
+          "shop"
+        ]
+      }
+    ],
+    "total": 3,
+    "summary": {
+      "total": 3,
+      "critical": 1,
+      "high": 1,
+      "medium": 1,
+      "low": 0,
+      "imagesScanned": 1,
+      "totalImages": 3
+    }
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "_comment": "Invented; the spec says only 'the raw Docker inspect object'. Shape follows Docker's container inspect. {{NAME}} placeholders are filled at load time.",
+  "body": {
+    "Id": "{{CID_WEB}}",
+    "Name": "/web",
+    "Created": "2026-01-02T03:04:05.000Z",
+    "Config": {
+      "Image": "nginx:1.27",
+      "Env": [
+        "PATH=/usr/local/bin:/usr/bin",
+        "DB_PASSWORD={{SECRET}}",
+        "EMPTY=",
+        "FLAG_ONLY"
+      ],
+      "Labels": {
+        "com.docker.compose.project": "shop",
+        "com.docker.compose.service": "svc"
+      }
+    },
+    "State": {
+      "Status": "running",
+      "Running": true,
+      "Health": {
+        "Status": "healthy"
+      }
+    },
+    "NetworkSettings": {
+      "Networks": {
+        "front": {
+          "IPAddress": "192.0.2.2"
+        }
+      }
+    },
+    "Mounts": []
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "_comment": "Invented from the DockHand 1.0.46 spec schema, with the key casing live DockHand uses; not a recorded response. {{NAME}} placeholders are filled at load time.",
+  "body": [
+    {
+      "id": 7,
+      "name": "env-seven",
+      "online": true,
+      "containers": {
+        "total": 3,
+        "running": 2,
+        "stopped": 1,
+        "unhealthy": 0,
+        "pendingUpdates": 1
+      },
+      "images": {
+        "total": 3
+      },
+      "volumes": {
+        "total": 2
+      },
+      "networks": {
+        "total": 2
+      },
+      "stacks": {
+        "total": 2,
+        "running": 2
+      },
+      "metrics": {
+        "cpuPercent": 3.5
+      },
+      "events": {
+        "total": 5,
+        "today": 1
+      }
+    }
+  ]
+}

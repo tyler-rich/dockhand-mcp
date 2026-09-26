@@ -1,0 +1,44 @@
+{
+  "_comment": "Invented; the spec's result object is untyped. Shape follows live DockHand's keys. {{NAME}} placeholders are filled at load time.",
+  "body": {
+    "found": true,
+    "result": {
+      "id": 1,
+      "environmentId": 7,
+      "imageId": "sha256:{{IMG_NGINX}}",
+      "imageName": "nginx:1.27",
+      "scanner": "grype",
+      "scannedAt": "2026-01-02T03:04:05.000Z",
+      "criticalCount": 1,
+      "highCount": 1,
+      "mediumCount": 1,
+      "lowCount": 0,
+      "negligibleCount": 0,
+      "unknownCount": 0,
+      "vulnerabilities": [
+        {
+          "id": "CVE-2026-0001",
+          "severity": "critical",
+          "package": "openssl",
+          "installedVersion": "3.0.0",
+          "fixedVersion": "3.0.1"
+        },
+        {
+          "id": "CVE-2026-0002",
+          "severity": "high",
+          "package": "openssl",
+          "installedVersion": "3.0.0",
+          "fixedVersion": "3.0.1"
+        },
+        {
+          "id": "CVE-2026-0003",
+          "severity": "medium",
+          "package": "openssl",
+          "installedVersion": "3.0.0",
+          "fixedVersion": "3.0.1"
+        }
+      ],
+      "error": null
+    }
+  }
+}

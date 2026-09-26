@@ -1,0 +1,14 @@
+{
+  "_comment": "Invented from the DockHand 1.0.46 spec 200 schema; not a recorded response. {{NAME}} placeholders are filled at load time.",
+  "body": {
+    "success": true,
+    "info": {
+      "serverVersion": "28.0.0",
+      "containers": 3,
+      "images": 4,
+      "name": "example-host",
+      "engine": "docker"
+    },
+    "isEdgeMode": false
+  }
+}

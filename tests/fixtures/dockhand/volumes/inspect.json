@@ -1,0 +1,12 @@
+{
+  "_comment": "Invented from the DockHand 1.0.46 spec schema, with the key casing live DockHand uses; not a recorded response. {{NAME}} placeholders are filled at load time.",
+  "body": {
+    "Name": "shop_data",
+    "Driver": "local",
+    "Mountpoint": "/var/lib/docker/volumes/shop_data/_data",
+    "Scope": "local",
+    "Labels": {},
+    "Options": {},
+    "CreatedAt": "2026-01-02T03:04:05.000Z"
+  }
+}

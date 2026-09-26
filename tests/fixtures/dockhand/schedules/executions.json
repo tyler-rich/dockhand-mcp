@@ -1,0 +1,20 @@
+{
+  "_comment": "Invented from the DockHand 1.0.46 spec schema, with the key casing live DockHand uses; not a recorded response. {{NAME}} placeholders are filled at load time.",
+  "body": {
+    "executions": [
+      {
+        "id": 3,
+        "scheduleType": "container_update",
+        "scheduleId": 1,
+        "environmentId": 7,
+        "triggeredBy": "cron",
+        "status": "success",
+        "startedAt": "2026-01-02T03:04:05.000Z",
+        "logs": "checked web\nno update\n"
+      }
+    ],
+    "total": 3,
+    "limit": 1,
+    "offset": 0
+  }
+}

@@ -1,0 +1,302 @@
+[
+  {
+    "name": "dockhand_batch_remove_containers",
+    "title": "Batch remove containers",
+    "tier": "destructive",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "GET",
+        "/api/containers"
+      ],
+      [
+        "POST",
+        "/api/batch"
+      ],
+      [
+        "GET",
+        "/api/jobs/{id}"
+      ]
+    ],
+    "description": "Remove several containers as one DockHand job after a human approves. Returns the job's status and per-container result.",
+    "input_schema_sha256": "20874c501784fb03829d8e3cb076dbaa47b787c4b0094cde8fb57b4d498f7e7b",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_clear_activity_log",
+    "title": "Clear activity log",
+    "tier": "destructive",
+    "endpoints": [
+      [
+        "GET",
+        "/api/activity/stats"
+      ],
+      [
+        "DELETE",
+        "/api/activity"
+      ]
+    ],
+    "description": "Delete every stored container activity event, in all environments, after a human approves. Returns DockHand's answer.",
+    "input_schema_sha256": "29578f763cc852805f6e1d15728e69c69189b5eb704875e54ec830901ce294e8",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_delete_stack",
+    "title": "Delete stack",
+    "tier": "destructive",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "GET",
+        "/api/stacks"
+      ],
+      [
+        "GET",
+        "/api/stacks/{name}/delete-preview"
+      ],
+      [
+        "GET",
+        "/api/stacks/{name}/env/raw"
+      ],
+      [
+        "GET",
+        "/api/stacks/{name}/env"
+      ],
+      [
+        "DELETE",
+        "/api/stacks/{name}"
+      ]
+    ],
+    "description": "Delete a stack from DockHand (compose down, then remove it) after a human approves; its files and named volumes are kept unless asked for. Returns what was deleted.",
+    "input_schema_sha256": "458008f41f482bd9ccde40b34e77f8773d3e211ed1a702382e27f53a359e12e6",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_down_stack",
+    "title": "Take stack down",
+    "tier": "destructive",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "GET",
+        "/api/stacks"
+      ],
+      [
+        "GET",
+        "/api/containers"
+      ],
+      [
+        "GET",
+        "/api/stacks/{name}/delete-preview"
+      ],
+      [
+        "GET",
+        "/api/stacks/{name}/env/raw"
+      ],
+      [
+        "GET",
+        "/api/stacks/{name}/env"
+      ],
+      [
+        "POST",
+        "/api/stacks/{name}/down"
+      ],
+      [
+        "GET",
+        "/api/jobs/{id}"
+      ]
+    ],
+    "description": "Take a stack down (docker compose down: removes its containers, keeps its files) after a human approves, optionally removing its named volumes. Returns the job's status and result.",
+    "input_schema_sha256": "e09be62441eb6c478464098233e3fcb588ccac75c768905001146edc4688a009",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_prune",
+    "title": "Prune",
+    "tier": "destructive",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "GET",
+        "/api/containers"
+      ],
+      [
+        "GET",
+        "/api/images"
+      ],
+      [
+        "GET",
+        "/api/networks"
+      ],
+      [
+        "GET",
+        "/api/volumes"
+      ],
+      [
+        "POST",
+        "/api/prune/containers"
+      ],
+      [
+        "POST",
+        "/api/prune/images"
+      ],
+      [
+        "POST",
+        "/api/prune/networks"
+      ],
+      [
+        "POST",
+        "/api/prune/volumes"
+      ],
+      [
+        "POST",
+        "/api/prune/all"
+      ],
+      [
+        "GET",
+        "/api/jobs/{id}"
+      ]
+    ],
+    "description": "Prune stopped containers, unused images, networks or volumes, or all of them, after a human approves. Returns DockHand's prune report.",
+    "input_schema_sha256": "5edf1312b374eb08db1e070a38dd5bd33e83e77f7aa3963ef408ec6bde68bf32",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_remove_container",
+    "title": "Remove container",
+    "tier": "destructive",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "GET",
+        "/api/containers"
+      ],
+      [
+        "GET",
+        "/api/containers/{id}"
+      ],
+      [
+        "DELETE",
+        "/api/containers/{id}"
+      ]
+    ],
+    "description": "Remove a container after a human approves; a running container needs force. Returns the removed container's id and name.",
+    "input_schema_sha256": "df62fe7c0b031272bea105d0fac4afb55f5d4259fe4a07dbae77ac5fac7edd45",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_remove_image",
+    "title": "Remove image",
+    "tier": "destructive",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "GET",
+        "/api/images"
+      ],
+      [
+        "GET",
+        "/api/containers"
+      ],
+      [
+        "DELETE",
+        "/api/images/{id}"
+      ]
+    ],
+    "description": "Remove an image after a human approves. Returns the removed image's id and tags.",
+    "input_schema_sha256": "cda335a34967bd5c87e57917d8c9b0676cafdcaded03669d3574abe17663d480",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_remove_network",
+    "title": "Remove network",
+    "tier": "destructive",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "GET",
+        "/api/networks"
+      ],
+      [
+        "GET",
+        "/api/networks/{id}/inspect"
+      ],
+      [
+        "DELETE",
+        "/api/networks/{id}"
+      ]
+    ],
+    "description": "Remove a network after a human approves; refused while containers are attached. Returns the removed network's id and name.",
+    "input_schema_sha256": "18491fafe8ce9546bab81a36b1cb75b47d5bc1e6e3cc13932ee6cee366939043",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_remove_volume",
+    "title": "Remove volume",
+    "tier": "destructive",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "GET",
+        "/api/volumes"
+      ],
+      [
+        "GET",
+        "/api/volumes/{name}/inspect"
+      ],
+      [
+        "DELETE",
+        "/api/volumes/{name}"
+      ]
+    ],
+    "description": "Remove a volume and its data after a human approves. Returns the removed volume's name.",
+    "input_schema_sha256": "63f90154ea9b2897bd93ca179bd37029168fb3f4fd0553d829c9902a2b4ea45e",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_run_image_prune_now",
+    "title": "Run image prune now",
+    "tier": "destructive",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "GET",
+        "/api/environments/{id}/image-prune"
+      ],
+      [
+        "PUT",
+        "/api/environments/{id}/image-prune"
+      ]
+    ],
+    "description": "Run an environment's configured image prune immediately, after a human approves. Returns DockHand's answer.",
+    "input_schema_sha256": "a2bdfb0d3e6d0ab8d96131864276ec1dd4feaf9010aa982ccdbe029ba985b5e7",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  }
+]

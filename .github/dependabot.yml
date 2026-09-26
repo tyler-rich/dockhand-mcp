@@ -1,0 +1,36 @@
+# Daily version updates, one grouped PR per ecosystem, into dev (D-013, S-09; daily since the public launch).
+# Security updates are not bound by this schedule; Dependabot opens them as advisories appear.
+version: 2
+updates:
+  - package-ecosystem: uv # reads pyproject.toml and updates uv.lock (the pip ecosystem does not)
+    directory: /
+    target-branch: dev
+    schedule:
+      interval: daily
+    open-pull-requests-limit: 5
+    groups:
+      uv:
+        patterns: ["*"]
+        update-types: [major, minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: dev
+    schedule:
+      interval: daily
+    open-pull-requests-limit: 5
+    groups:
+      github-actions:
+        patterns: ["*"]
+        update-types: [major, minor, patch]
+
+  - package-ecosystem: docker
+    directory: /
+    target-branch: dev
+    schedule:
+      interval: daily
+    open-pull-requests-limit: 5
+    groups:
+      docker:
+        patterns: ["*"]
+        update-types: [major, minor, patch]

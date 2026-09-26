@@ -1,0 +1,13 @@
+{
+  "_comment": "Invented. The spec names the log field `log`; live DockHand uses `logs`.",
+  "body": {
+    "id": 3,
+    "scheduleType": "container_update",
+    "scheduleId": 1,
+    "environmentId": 7,
+    "triggeredBy": "cron",
+    "status": "success",
+    "startedAt": "2026-01-02T03:04:05.000Z",
+    "logs": "checked web\nno update\n"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "_comment": "Invented; the spec gives no 200 schema. Shape follows live DockHand's keys. {{NAME}} placeholders are filled at load time.",
+  "body": [
+    {
+      "id": "{{CID_WEB}}",
+      "name": "web",
+      "cpuPercent": 1.5,
+      "memoryUsage": 1000,
+      "memoryPercent": 1.0
+    },
+    {
+      "id": "{{CID_DB}}",
+      "name": "db",
+      "cpuPercent": 0.5,
+      "memoryUsage": 3000,
+      "memoryPercent": 3.0
+    }
+  ]
+}

@@ -1,0 +1,3 @@
+# Normalise line endings in the repository and in working trees on every platform, so LICENSE
+# keeps the exact bytes published by apache.org and shell/Docker files never gain CRLF.
+* text=auto eol=lf

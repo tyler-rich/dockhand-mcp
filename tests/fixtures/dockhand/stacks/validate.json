@@ -1,0 +1,19 @@
+{
+  "_comment": "Invented from the DockHand 1.0.46 spec schema, with the key casing live DockHand uses; not a recorded response. {{NAME}} placeholders are filled at load time.",
+  "body": {
+    "findings": [
+      {
+        "ruleId": "image-latest",
+        "severity": "warn",
+        "message": "image uses a floating tag",
+        "service": "web",
+        "line": 3
+      }
+    ],
+    "counts": {
+      "error": 0,
+      "warn": 1,
+      "info": 0
+    }
+  }
+}

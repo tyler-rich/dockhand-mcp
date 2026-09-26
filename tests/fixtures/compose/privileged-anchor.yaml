@@ -1,0 +1,6 @@
+# Invented guardrail fixture: privileged hidden in an x- anchor, used as the whole service.
+x-base: &base
+  image: nginx:1.27
+  privileged: true
+services:
+  web: *base

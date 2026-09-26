@@ -1,0 +1,18 @@
+{
+  "_comment": "Invented from the DockHand 1.0.46 spec schema, with the key casing live DockHand uses; not a recorded response. {{NAME}} placeholders are filled at load time.",
+  "body": {
+    "changelogUrl": "https://example.test/releases",
+    "source": "github",
+    "rateLimited": false,
+    "notes": [
+      {
+        "version": "1.28",
+        "name": "1.28",
+        "githubTag": "v1.28",
+        "body": "Bug fixes.",
+        "publishedAt": "2026-01-02T03:04:05.000Z",
+        "url": "https://example.test/releases/1.28"
+      }
+    ]
+  }
+}

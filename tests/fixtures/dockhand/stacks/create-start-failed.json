@@ -1,0 +1,8 @@
+{
+  "_comment": "Keys recorded live from DockHand 1.0.46 (S3f): POST /api/stacks with start=true, for a compose whose image tag does not exist, answered HTTP 200 with success false, error and output; the stack was created. The message text is sanitized (invented image name).",
+  "body": {
+    "success": false,
+    "error": " Image nginx:no-such-tag Pulling \n Image nginx:no-such-tag Error failed to resolve reference \"docker.io/library/nginx:no-such-tag\": not found\n",
+    "output": ""
+  }
+}

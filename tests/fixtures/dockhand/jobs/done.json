@@ -1,0 +1,26 @@
+{
+  "_comment": "Invented in the shape live DockHand 1.0.46 finished jobs with in S3a (status done; lines are {event, data} records ending in a result); no values were copied. {{NAME}} placeholders are filled at load time.",
+  "body": {
+    "id": "4c3b2a19-8f7e-4d6c-9b5a-1f2e3d4c5b6a",
+    "status": "done",
+    "lines": [
+      {
+        "event": "progress",
+        "data": {
+          "status": "Removing"
+        }
+      },
+      {
+        "event": "result",
+        "data": {
+          "success": true,
+          "output": "removed"
+        }
+      }
+    ],
+    "result": {
+      "success": true,
+      "output": "removed"
+    }
+  }
+}

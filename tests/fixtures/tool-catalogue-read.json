@@ -1,0 +1,949 @@
+[
+  {
+    "name": "dockhand_generate_container_compose",
+    "title": "Generate container compose",
+    "tier": "read",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "GET",
+        "/api/containers"
+      ],
+      [
+        "GET",
+        "/api/containers/{id}/compose"
+      ]
+    ],
+    "description": "Generate a docker-compose service definition from a container's current configuration; nothing is saved. Environment values are redacted unless redact_env is false, which returns secret values.",
+    "input_schema_sha256": "c852560807eeafc80fdbe8b08061cbcdf260bc72d750d1c85db9f4492e316385",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_get_activity",
+    "title": "Get container activity",
+    "tier": "read",
+    "endpoints": [
+      [
+        "GET",
+        "/api/activity"
+      ]
+    ],
+    "description": "Get container lifecycle events (start, stop, die, health changes and others), newest first, filtered by environment, container, action or date range.",
+    "input_schema_sha256": "7c3dde08a0d1de2f01da66e4990a4bb7e2b98e618b540b0c95973f2629fa63e7",
+    "output_schema_sha256": "eb67ee98693805d9e362d39aeec37668efb064da962c50f6c893fbfddd6f70a8"
+  },
+  {
+    "name": "dockhand_get_activity_stats",
+    "title": "Get activity stats",
+    "tier": "read",
+    "endpoints": [
+      [
+        "GET",
+        "/api/activity/stats"
+      ]
+    ],
+    "description": "Get container activity totals: all-time, today, and counts per action.",
+    "input_schema_sha256": "0ca0def0efd7124c0d24c83e44abb5d98db742e42f9e8681220bd609df1702c1",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_get_all_container_stats",
+    "title": "Get all container stats",
+    "tier": "read",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "GET",
+        "/api/containers/stats"
+      ]
+    ],
+    "description": "Get a resource snapshot for every running container in an environment: CPU and memory use, network and block I/O.",
+    "input_schema_sha256": "177f95ff71a36e5b7719a26b26bbe330b79f5a6a606611168bdd69c5ba249973",
+    "output_schema_sha256": "eb67ee98693805d9e362d39aeec37668efb064da962c50f6c893fbfddd6f70a8"
+  },
+  {
+    "name": "dockhand_get_audit_log",
+    "title": "Get audit log",
+    "tier": "read",
+    "endpoints": [
+      [
+        "GET",
+        "/api/audit"
+      ]
+    ],
+    "description": "Get DockHand's audit log of user actions, filtered by user, entity type, action, environment or date range. Available on DockHand Enterprise only.",
+    "input_schema_sha256": "b6b5450bae89504db960693f496b7c111fb35be41703bf908dc6b19dada9c526",
+    "output_schema_sha256": "eb67ee98693805d9e362d39aeec37668efb064da962c50f6c893fbfddd6f70a8"
+  },
+  {
+    "name": "dockhand_get_auto_update_settings",
+    "title": "Get auto-update settings",
+    "tier": "read",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "GET",
+        "/api/auto-update"
+      ],
+      [
+        "GET",
+        "/api/auto-update/{containerName}"
+      ]
+    ],
+    "description": "Get automatic image-update settings: every enabled container's, keyed by container name, or one container's schedule and vulnerability criteria.",
+    "input_schema_sha256": "fb9ae5ad8220f4fbadfd6f1d3d3c9c39b9ce9bed5df9a544686bde66dd422db3",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_get_container",
+    "title": "Get container",
+    "tier": "read",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "GET",
+        "/api/containers"
+      ],
+      [
+        "GET",
+        "/api/containers/{id}"
+      ]
+    ],
+    "description": "Get a container's full Docker inspect payload, or selected sections of it. Environment variable values are redacted unless redact_env is false, which returns secret values.",
+    "input_schema_sha256": "0eeb69ac3c119778a458f542419258f1759ce86aa7a2c65df2ba62ae1307db9b",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_get_container_logs",
+    "title": "Get container logs",
+    "tier": "read",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "GET",
+        "/api/containers"
+      ],
+      [
+        "GET",
+        "/api/containers/{id}/logs"
+      ]
+    ],
+    "description": "Get the most recent lines of a container's combined stdout and stderr. Returns the text, capped in size, with a flag when older lines were dropped.",
+    "input_schema_sha256": "5026db419a0f4b09df864beac5f8c93614219ac23fdd47ab9d783fd0f4989698",
+    "output_schema_sha256": "d33b9fef4b3283207c805ce1e4cb3ab69e92f89cf77e86cfb2ffb0a82d3617e3"
+  },
+  {
+    "name": "dockhand_get_container_processes",
+    "title": "Get container processes",
+    "tier": "read",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "GET",
+        "/api/containers"
+      ],
+      [
+        "GET",
+        "/api/containers/{id}/top"
+      ]
+    ],
+    "description": "List the processes running inside a container, with ps column titles.",
+    "input_schema_sha256": "72c300d3f8f4b86b7a55458713c7f2c04223825c6ca84fe20db78bea93179e2d",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_get_container_sizes",
+    "title": "Get container sizes",
+    "tier": "read",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "GET",
+        "/api/containers"
+      ],
+      [
+        "GET",
+        "/api/containers/sizes"
+      ]
+    ],
+    "description": "List containers in an environment with their writable-layer and root filesystem sizes in bytes, largest writable layer first.",
+    "input_schema_sha256": "8dbd4327daeb0c3a8509cbf350ade9566cd3ddf453a7399b17cde0aa3954c26c",
+    "output_schema_sha256": "eb67ee98693805d9e362d39aeec37668efb064da962c50f6c893fbfddd6f70a8"
+  },
+  {
+    "name": "dockhand_get_container_stats",
+    "title": "Get container stats",
+    "tier": "read",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "GET",
+        "/api/containers"
+      ],
+      [
+        "GET",
+        "/api/containers/{id}/stats"
+      ]
+    ],
+    "description": "Get a one-shot resource snapshot for a container: CPU and memory use, network and block I/O.",
+    "input_schema_sha256": "72c300d3f8f4b86b7a55458713c7f2c04223825c6ca84fe20db78bea93179e2d",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_get_dashboard_stats",
+    "title": "Get dashboard stats",
+    "tier": "read",
+    "endpoints": [
+      [
+        "GET",
+        "/api/dashboard/stats"
+      ]
+    ],
+    "description": "Get per-environment dashboard statistics: container states, images, volumes, networks, stacks, resource metrics and event counts.",
+    "input_schema_sha256": "fed0c79a3e935a36bc5289a4b86844f8081a0c5d61b8777c5983f1c10877d98b",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_get_environment",
+    "title": "Get environment",
+    "tier": "read",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "GET",
+        "/api/environments/{id}"
+      ],
+      [
+        "GET",
+        "/api/environments/{id}/timezone"
+      ],
+      [
+        "GET",
+        "/api/environments/{id}/update-check"
+      ],
+      [
+        "GET",
+        "/api/environments/{id}/image-prune"
+      ],
+      [
+        "GET",
+        "/api/environments/{id}/disk-warning"
+      ],
+      [
+        "GET",
+        "/api/environments/{id}/remote-stacks-dir"
+      ]
+    ],
+    "description": "Get one environment with its timezone, update-check, image-prune, disk-warning and remote stacks directory settings. A section that cannot be read is reported under errors.",
+    "input_schema_sha256": "c4aef5146d37a1a6415ea3b56d1c03eeef03b81c51861563e880c12200b32157",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_get_host_info",
+    "title": "Get host info",
+    "tier": "read",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "GET",
+        "/api/host"
+      ]
+    ],
+    "description": "Get the Docker host behind an environment: hostname, platform, CPU, memory, uptime, Docker version and container and image counts.",
+    "input_schema_sha256": "e2fd4fd5f29adaa26816c18f4d758f3392a6a771e24d75872cbbcad13bd1e2ef",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_get_image_history",
+    "title": "Get image history",
+    "tier": "read",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "GET",
+        "/api/images"
+      ],
+      [
+        "GET",
+        "/api/images/{id}/history"
+      ]
+    ],
+    "description": "Get an image's layer history: each layer's creating command, size and creation time.",
+    "input_schema_sha256": "0dc0df9ebe9da0a686f4cc512a280f641440066e2e5a9c43018a351a7cfbc3b4",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_get_image_scan",
+    "title": "Get image scan",
+    "tier": "read",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "GET",
+        "/api/images/scan"
+      ]
+    ],
+    "description": "Get the latest stored vulnerability scan of an image without running a new one. Returns severity counts and a page of findings, or found false.",
+    "input_schema_sha256": "ad501bba3abeaecb266236e63f52caa581404d3eb84852a3bb6d7eb1d2d1809d",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_get_job",
+    "title": "Get job",
+    "tier": "read",
+    "endpoints": [
+      [
+        "GET",
+        "/api/jobs/{id}"
+      ]
+    ],
+    "description": "Get a DockHand background job's status, its most recent output lines and, once finished, its result.",
+    "input_schema_sha256": "9220c20d8cb7ff0d3d37b33851c00fd243aa1b672304832fc8f0069095972690",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_get_network",
+    "title": "Get network",
+    "tier": "read",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "GET",
+        "/api/networks"
+      ],
+      [
+        "GET",
+        "/api/networks/{id}/inspect"
+      ]
+    ],
+    "description": "Get a network's Docker inspect payload: driver, IPAM configuration and connected containers.",
+    "input_schema_sha256": "bb6c2f14200286fc566d189f7b2ac87cc3b1830106de26de280f5bade09b4fd9",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_get_operation",
+    "title": "Get operation status",
+    "tier": "read",
+    "endpoints": [],
+    "description": "Get the status of a long-running operation started earlier by this server. Returns its status and, once finished, its result or error.",
+    "input_schema_sha256": "6e8566921f4b1aa9877d4a73d6c1a5fc4d835e0d1781c5cd2675ce92a2943439",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_get_pending_updates",
+    "title": "Get pending updates",
+    "tier": "read",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "GET",
+        "/api/containers/pending-updates"
+      ],
+      [
+        "GET",
+        "/api/containers/check-updates"
+      ]
+    ],
+    "description": "List containers with a newer image recorded by DockHand's last update check, with when that check ran. Does not run a new check.",
+    "input_schema_sha256": "b5053a90ecea16bcfa74972033d181660653f66d98ff8aac341f5a5d55e8a8c3",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_get_schedule_execution",
+    "title": "Get schedule execution",
+    "tier": "read",
+    "endpoints": [
+      [
+        "GET",
+        "/api/schedules/executions/{id}"
+      ]
+    ],
+    "description": "Get one schedule execution with its status, timing and log text, capped in size, with a flag when the start of the log was dropped.",
+    "input_schema_sha256": "46e697c98e178483c55b341a980fbd1ab0ba0af74b3c6c4b2563c7b7745e36eb",
+    "output_schema_sha256": "c572be267ccb164844eae24f8fe9e2b7795152a7df41fd2bf7797fac1f7f3104"
+  },
+  {
+    "name": "dockhand_get_settings",
+    "title": "Get settings",
+    "tier": "read",
+    "endpoints": [
+      [
+        "GET",
+        "/api/settings/general"
+      ],
+      [
+        "GET",
+        "/api/settings/scanner"
+      ],
+      [
+        "GET",
+        "/api/settings/semver"
+      ]
+    ],
+    "description": "Get DockHand's general settings, vulnerability-scanner settings and newer-version (semver) detection settings. A section that cannot be read is reported under errors.",
+    "input_schema_sha256": "8b8630eee935d1dfb4134a6040d56cf2c6938b4839cacf2003cdafbfa574c9bb",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_get_stack_compose",
+    "title": "Get stack compose",
+    "tier": "read",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "GET",
+        "/api/stacks/{name}/compose"
+      ],
+      [
+        "GET",
+        "/api/stacks/{name}/env/raw"
+      ],
+      [
+        "GET",
+        "/api/stacks/{name}/env"
+      ]
+    ],
+    "description": "Get a stack's compose file content and the paths of its compose and .env files, optionally with compose guardrail findings.",
+    "input_schema_sha256": "f3c46c5c299d970202259597482f6b5b008c6d84bba42cfade806b5c16d94ede",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_get_stack_deploy_log",
+    "title": "Get stack deploy log",
+    "tier": "read",
+    "endpoints": [
+      [
+        "GET",
+        "/api/stacks/{name}/deploys/{runId}"
+      ],
+      [
+        "GET",
+        "/api/stacks/{name}/deploys/{runId}/log"
+      ]
+    ],
+    "description": "Get one deploy run of a stack with its log text, capped in size, with a flag when the start of the log was dropped.",
+    "input_schema_sha256": "f1f137d254ebc5979d006b5ab01e8ec24627cc8cfc8f994788e748078f5542ba",
+    "output_schema_sha256": "c572be267ccb164844eae24f8fe9e2b7795152a7df41fd2bf7797fac1f7f3104"
+  },
+  {
+    "name": "dockhand_get_stack_env",
+    "title": "Get stack env",
+    "tier": "read",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "GET",
+        "/api/stacks/{name}/env"
+      ]
+    ],
+    "description": "Get a stack's environment variables as key, value and isSecret. Secret values are masked by DockHand as ***.",
+    "input_schema_sha256": "3858c79791a4b2c164dfdc24dc797b92c70631c2c7b2f48ade4befa892d43e32",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_get_stack_env_raw",
+    "title": "Get stack .env file",
+    "tier": "read",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "GET",
+        "/api/stacks/{name}/env/raw"
+      ]
+    ],
+    "description": "Get a stack's .env file as raw text, comments and formatting preserved. Secrets stored by DockHand are not part of this file.",
+    "input_schema_sha256": "3858c79791a4b2c164dfdc24dc797b92c70631c2c7b2f48ade4befa892d43e32",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_get_stack_paths",
+    "title": "Get stack paths",
+    "tier": "read",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "GET",
+        "/api/stacks/base-path"
+      ],
+      [
+        "GET",
+        "/api/stacks/sources"
+      ],
+      [
+        "GET",
+        "/api/stacks/default-path"
+      ],
+      [
+        "GET",
+        "/api/stacks/path-hints"
+      ]
+    ],
+    "description": "Show where stack files live: the stacks base directory, stored compose and .env paths per stack, and for one stack its default path and container label hints.",
+    "input_schema_sha256": "893aafed416217234399e4537b2caa468965cbd0f97fdb5cc56156733b3864cc",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_get_system_info",
+    "title": "Get system info",
+    "tier": "read",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "GET",
+        "/api/system"
+      ],
+      [
+        "GET",
+        "/api/system/disk"
+      ]
+    ],
+    "description": "Get Docker daemon, host, DockHand runtime and database information and object counts for an environment, optionally with Docker disk usage totals.",
+    "input_schema_sha256": "fb83652aa7914d439e79013a11b2033a6fcc2093879049962fb219a22daede03",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_get_version_notes",
+    "title": "Get version notes",
+    "tier": "read",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "GET",
+        "/api/containers"
+      ],
+      [
+        "GET",
+        "/api/containers/{id}/version-notes"
+      ]
+    ],
+    "description": "Get upstream release notes for newer image versions of a container, as found by DockHand's update check.",
+    "input_schema_sha256": "7f2b2f0be6c15628f6b2d59fa3021ccf0bdf2c84a1d11daa207af4d47f1974e6",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_get_volume",
+    "title": "Get volume",
+    "tier": "read",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "GET",
+        "/api/volumes/{name}/inspect"
+      ]
+    ],
+    "description": "Get a volume's Docker inspect payload: driver, mountpoint, scope, labels and options.",
+    "input_schema_sha256": "5648822a359b9d72927ea88b8261e97e796ae716b11d899c11cdb1379b16cb9f",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_get_vulnerability_summary",
+    "title": "Get vulnerability summary",
+    "tier": "read",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "GET",
+        "/api/vulnerabilities/count"
+      ]
+    ],
+    "description": "Get the total vulnerability finding count and counts per severity for an environment, with the images, containers and stacks that have findings.",
+    "input_schema_sha256": "0de5a4f4d5b9a61632eee9c141d34ee386ac54ddaad4a300bd178f77ca711025",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_health",
+    "title": "DockHand health",
+    "tier": "read",
+    "endpoints": [
+      [
+        "GET",
+        "/api/health"
+      ],
+      [
+        "GET",
+        "/api/health/database"
+      ]
+    ],
+    "description": "Check that DockHand is up and its database is healthy. Returns the API status and the database schema and migration status.",
+    "input_schema_sha256": "fe35444c0b61d2e834a656dc476958fb0bbaafe2f1050aef3f3818687a3a85cf",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_list_containers",
+    "title": "List containers",
+    "tier": "read",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "GET",
+        "/api/containers"
+      ]
+    ],
+    "description": "List containers in an environment, optionally filtered by state, name or stack. Returns id, name, image, state, status, health and stack for each.",
+    "input_schema_sha256": "0e14a76020048be4ecbbe9342000a0d22588140a3f477bdb0e3b27945d06fbaf",
+    "output_schema_sha256": "eb67ee98693805d9e362d39aeec37668efb064da962c50f6c893fbfddd6f70a8"
+  },
+  {
+    "name": "dockhand_list_environments",
+    "title": "List environments",
+    "tier": "read",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ]
+    ],
+    "description": "List the Docker environments (hosts) DockHand manages. Returns each environment's id, name and connection type.",
+    "input_schema_sha256": "b80890a96294ed3bc824b7510dbd6e7d0e03d661d19fc923ffbe6e209ee98ac4",
+    "output_schema_sha256": "eb67ee98693805d9e362d39aeec37668efb064da962c50f6c893fbfddd6f70a8"
+  },
+  {
+    "name": "dockhand_list_git_repositories",
+    "title": "List git repositories",
+    "tier": "read",
+    "endpoints": [
+      [
+        "GET",
+        "/api/git/repositories"
+      ],
+      [
+        "GET",
+        "/api/git/repositories/{id}"
+      ],
+      [
+        "GET",
+        "/api/git/repositories/{id}/sync"
+      ]
+    ],
+    "description": "List the git repositories DockHand deploys from, or get one, optionally checking whether its branch has new upstream commits without pulling them.",
+    "input_schema_sha256": "0418473e58b5ac2cb989075c63da4a75e12da5296bce2e795db0e81cd0c62763",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_list_git_stacks",
+    "title": "List git stacks",
+    "tier": "read",
+    "endpoints": [
+      [
+        "GET",
+        "/api/git/stacks"
+      ],
+      [
+        "GET",
+        "/api/git/stacks/{id}"
+      ],
+      [
+        "GET",
+        "/api/git/stacks/{id}/env-files"
+      ]
+    ],
+    "description": "List stacks deployed from git, or get one with the names of the .env files in its repository checkout.",
+    "input_schema_sha256": "d997d30814eca6ed0f341382f39579facf76ac6b62e5d2c77ee470aefc92adc2",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_list_image_tags",
+    "title": "List image tags",
+    "tier": "read",
+    "endpoints": [
+      [
+        "GET",
+        "/api/registry/tags"
+      ],
+      [
+        "GET",
+        "/api/registry/tag-info"
+      ]
+    ],
+    "description": "List the tags of an image repository on Docker Hub or a configured registry, optionally with each tag's size and date.",
+    "input_schema_sha256": "ca8e3e90386d79cc9d0c909ffd8b857958f40d18b381b642f74e769f53997413",
+    "output_schema_sha256": "eb67ee98693805d9e362d39aeec37668efb064da962c50f6c893fbfddd6f70a8"
+  },
+  {
+    "name": "dockhand_list_images",
+    "title": "List images",
+    "tier": "read",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "GET",
+        "/api/images"
+      ]
+    ],
+    "description": "List Docker images in an environment, optionally only dangling ones or those whose tags match. Returns id, tags, size, creation time and container count.",
+    "input_schema_sha256": "a95247fc372dc5c59ab18dec3b1095fc8ef96cd5fcb89d9b45df596a6017a484",
+    "output_schema_sha256": "eb67ee98693805d9e362d39aeec37668efb064da962c50f6c893fbfddd6f70a8"
+  },
+  {
+    "name": "dockhand_list_networks",
+    "title": "List networks",
+    "tier": "read",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "GET",
+        "/api/networks"
+      ]
+    ],
+    "description": "List Docker networks in an environment. Returns each network's id, name, driver, scope, IPAM configuration and connected containers.",
+    "input_schema_sha256": "6bdf1f766f3c119471d477eb9423b0500126d7935a8a142f913947bd321de6b9",
+    "output_schema_sha256": "eb67ee98693805d9e362d39aeec37668efb064da962c50f6c893fbfddd6f70a8"
+  },
+  {
+    "name": "dockhand_list_registries",
+    "title": "List registries",
+    "tier": "read",
+    "endpoints": [
+      [
+        "GET",
+        "/api/registries"
+      ]
+    ],
+    "description": "List the container registries configured in DockHand: id, name, URL, whether it is the default and whether credentials are stored.",
+    "input_schema_sha256": "2100f52e7d72122c1c154cc9b7b0f925bfe6a62ba1be879c21abc2b69aac0763",
+    "output_schema_sha256": "eb67ee98693805d9e362d39aeec37668efb064da962c50f6c893fbfddd6f70a8"
+  },
+  {
+    "name": "dockhand_list_schedule_executions",
+    "title": "List schedule executions",
+    "tier": "read",
+    "endpoints": [
+      [
+        "GET",
+        "/api/schedules/executions"
+      ]
+    ],
+    "description": "List schedule execution history, newest first, filtered by schedule, environment, status, trigger or date range. Logs are omitted.",
+    "input_schema_sha256": "28edfbe7ce573a158588267ce9f85f697327266cc327decfbd4526160856615a",
+    "output_schema_sha256": "eb67ee98693805d9e362d39aeec37668efb064da962c50f6c893fbfddd6f70a8"
+  },
+  {
+    "name": "dockhand_list_schedules",
+    "title": "List schedules",
+    "tier": "read",
+    "endpoints": [
+      [
+        "GET",
+        "/api/schedules"
+      ]
+    ],
+    "description": "List DockHand's schedules (auto-updates, git syncs, image prunes, system jobs) with their cron expression, next run and recent execution status.",
+    "input_schema_sha256": "9f1d4d520310e10d88f54c9ae95552856c8ea71a73a5082880ea8cebf88daba8",
+    "output_schema_sha256": "eb67ee98693805d9e362d39aeec37668efb064da962c50f6c893fbfddd6f70a8"
+  },
+  {
+    "name": "dockhand_list_stack_deploys",
+    "title": "List stack deploys",
+    "tier": "read",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "GET",
+        "/api/stacks/{name}/deploys"
+      ]
+    ],
+    "description": "List a stack's recorded deploy runs: id, trigger, timing, status and error message.",
+    "input_schema_sha256": "e0166aad13b54608bc2f18f702cc6e03c2b49782bd0315df0007f97c9bb54d4b",
+    "output_schema_sha256": "eb67ee98693805d9e362d39aeec37668efb064da962c50f6c893fbfddd6f70a8"
+  },
+  {
+    "name": "dockhand_list_stacks",
+    "title": "List stacks",
+    "tier": "read",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "GET",
+        "/api/stacks"
+      ]
+    ],
+    "description": "List compose stacks in an environment. Returns each stack's name, status, source type, container names, pending update counts, and whether DockHand tracks it in this environment.",
+    "input_schema_sha256": "ffd6c35aeec46ad69f2ba34b6c1b89aeef5fc5bc41abb8f981dbe96466e1ed89",
+    "output_schema_sha256": "eb67ee98693805d9e362d39aeec37668efb064da962c50f6c893fbfddd6f70a8"
+  },
+  {
+    "name": "dockhand_list_volumes",
+    "title": "List volumes",
+    "tier": "read",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "GET",
+        "/api/volumes"
+      ]
+    ],
+    "description": "List Docker volumes in an environment. Returns each volume's name, driver, mountpoint, scope, labels and the containers using it.",
+    "input_schema_sha256": "600115d8f436105ff475a2c6a6caaf663c7da4dcf2a15ff19c3d6a4fa0426dc4",
+    "output_schema_sha256": "eb67ee98693805d9e362d39aeec37668efb064da962c50f6c893fbfddd6f70a8"
+  },
+  {
+    "name": "dockhand_list_vulnerabilities",
+    "title": "List vulnerabilities",
+    "tier": "read",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "GET",
+        "/api/vulnerabilities"
+      ]
+    ],
+    "description": "List vulnerability findings from stored image scans in an environment, filtered by severity, image, container, stack or search text. Returns CVE, package, versions and affected images.",
+    "input_schema_sha256": "e335cafbad362e4648757ee2a0fc58fa640c7992074fb63c0338f5af56d10159",
+    "output_schema_sha256": "eb67ee98693805d9e362d39aeec37668efb064da962c50f6c893fbfddd6f70a8"
+  },
+  {
+    "name": "dockhand_preview_stack_delete",
+    "title": "Preview stack delete",
+    "tier": "read",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "GET",
+        "/api/stacks/{name}/delete-preview"
+      ]
+    ],
+    "description": "Show the directories and named volumes that deleting a stack with its files would remove. Nothing is deleted.",
+    "input_schema_sha256": "3858c79791a4b2c164dfdc24dc797b92c70631c2c7b2f48ade4befa892d43e32",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_search_registry",
+    "title": "Search registry",
+    "tier": "read",
+    "endpoints": [
+      [
+        "GET",
+        "/api/registry/search"
+      ]
+    ],
+    "description": "Search Docker Hub, or a configured registry, for images by name. Returns name, description, stars and whether the image is official.",
+    "input_schema_sha256": "41d2f18d24cbe56578865e46f1f3856d72529c10ad41db0c2b54995959e9bc4a",
+    "output_schema_sha256": "eb67ee98693805d9e362d39aeec37668efb064da962c50f6c893fbfddd6f70a8"
+  },
+  {
+    "name": "dockhand_validate_stack_compose",
+    "title": "Validate stack compose",
+    "tier": "read",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "POST",
+        "/api/stacks/{name}/validate"
+      ]
+    ],
+    "description": "Lint a compose file with DockHand's validator and this server's compose guardrails without saving or deploying it. Returns both sets of findings with severities.",
+    "input_schema_sha256": "2a0097fcaec450e1b0dcf2a44d258fc1de4575abb4a253c5b9c4f857ab34368a",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_validate_stack_env",
+    "title": "Validate stack env",
+    "tier": "read",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "POST",
+        "/api/stacks/{name}/env/validate"
+      ]
+    ],
+    "description": "Check a stack's defined variables against those its compose file uses, without saving anything. Returns required, optional, missing and unused variable names.",
+    "input_schema_sha256": "acba97f8701f2d7541b54e91bc1b814e6d6ff419c1d669d2a8b584012d14fbce",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  }
+]

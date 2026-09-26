@@ -1,0 +1,44 @@
+{
+  "_comment": "Invented from the DockHand 1.0.46 spec schema, with the key casing live DockHand uses; not a recorded response. {{NAME}} placeholders are filled at load time.",
+  "body": [
+    {
+      "id": "{{CID_WEB}}",
+      "name": "web",
+      "image": "nginx:1.27",
+      "imageId": "sha256:{{IMG_NGINX}}",
+      "state": "running",
+      "status": "Up 2 hours",
+      "health": "healthy",
+      "created": 1767323045,
+      "labels": {
+        "com.docker.compose.project": "shop",
+        "com.docker.compose.service": "svc"
+      }
+    },
+    {
+      "id": "{{CID_DB}}",
+      "name": "db",
+      "image": "redis:7",
+      "imageId": "sha256:{{IMG_REDIS}}",
+      "state": "running",
+      "status": "Up 2 hours",
+      "health": "unhealthy",
+      "created": 1767323045,
+      "labels": {
+        "com.docker.compose.project": "shop",
+        "com.docker.compose.service": "svc"
+      }
+    },
+    {
+      "id": "{{CID_WORKER}}",
+      "name": "worker",
+      "image": "busybox:1.37",
+      "imageId": "sha256:{{IMG_BUSYBOX}}",
+      "state": "exited",
+      "status": "Exited (0) 1 hour ago",
+      "health": null,
+      "created": 1767323045,
+      "labels": {}
+    }
+  ]
+}

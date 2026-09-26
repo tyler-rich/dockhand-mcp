@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+dist/
+build/
+*.egg-info/
+
+# Secrets — never commit
+.env
+.env.*
+!.env.example
+secrets/
+*.token
+*.pem
+*.key
+
+# DockHand's OpenAPI document — fetched locally from your own instance, never committed
+docs/api/*.json
+
+# Local tooling
+.claude/settings.local.json
+.idea/
+.vscode/
+*.log

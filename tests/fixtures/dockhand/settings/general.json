@@ -1,0 +1,10 @@
+{
+  "_comment": "Invented; the spec gives no 200 schema. Keys follow the PUT body and live DockHand.",
+  "body": {
+    "confirmDestructive": true,
+    "showStoppedContainers": true,
+    "defaultTimezone": "UTC",
+    "logMaxLines": 1000,
+    "eventRetentionDays": 30
+  }
+}

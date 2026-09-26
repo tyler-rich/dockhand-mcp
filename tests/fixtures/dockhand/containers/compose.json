@@ -1,0 +1,9 @@
+{
+  "_comment": "Invented from the DockHand 1.0.46 spec schema, with the key casing live DockHand uses; not a recorded response. {{NAME}} placeholders are filled at load time.",
+  "body": {
+    "compose": "services:\n  web:\n    image: nginx:1.27\n    environment:\n      - DB_PASSWORD={{SECRET}}\n      - PLAIN=1\n      - BARE\n  sidecar:\n    image: busybox:1.37\n    environment:\n      API_TOKEN: {{SECRET}}\n      MODE: fast\n      UNSET:\n",
+    "composeFullEnv": "services:\n  web:\n    image: nginx:1.27\n    environment:\n      - DB_PASSWORD={{SECRET}}\n      - PLAIN=1\n      - PATH=/usr/bin\n      - INHERITED={{SECRET}}\n      - BARE\n  sidecar:\n    image: busybox:1.37\n    environment:\n      API_TOKEN: {{SECRET}}\n      MODE: fast\n      UNSET:\n",
+    "serviceName": "web",
+    "stackProject": "shop"
+  }
+}

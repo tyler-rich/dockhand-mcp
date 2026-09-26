@@ -1,0 +1,862 @@
+[
+  {
+    "name": "dockhand_batch_containers",
+    "title": "Batch container operation",
+    "tier": "operator",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "GET",
+        "/api/containers"
+      ],
+      [
+        "POST",
+        "/api/batch"
+      ],
+      [
+        "GET",
+        "/api/jobs/{id}"
+      ]
+    ],
+    "description": "Start, stop, restart, pause or unpause several containers as one DockHand job. Returns the job's status, succeeded and failed counts, and each container's outcome.",
+    "input_schema_sha256": "77e9d1e57c2485faff7aa22a42270bef4466bf0d95b2587da1a29ca8986d984e",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_cancel_job",
+    "title": "Cancel job",
+    "tier": "operator",
+    "endpoints": [
+      [
+        "DELETE",
+        "/api/jobs/{id}"
+      ]
+    ],
+    "description": "Ask DockHand to cancel a running background job. Returns whether it was.",
+    "input_schema_sha256": "d5d85ee3ef7da25a04e2d9e73c58b26b57eb32c4f5063db689075b66d7dede42",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_check_container_updates",
+    "title": "Check container updates",
+    "tier": "operator",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "POST",
+        "/api/containers/check-updates"
+      ],
+      [
+        "GET",
+        "/api/containers/pending-updates"
+      ],
+      [
+        "GET",
+        "/api/jobs/{id}"
+      ]
+    ],
+    "description": "Run a fresh image-update check for every container in an environment. Returns the check's counts and the resulting pending updates.",
+    "input_schema_sha256": "62e7f65156e84a436ec1401df2ff629aed0696916b94ed2e81a25a4d2ad6a3da",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_clear_pending_updates",
+    "title": "Clear pending updates",
+    "tier": "operator",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "GET",
+        "/api/containers"
+      ],
+      [
+        "DELETE",
+        "/api/containers/pending-updates"
+      ]
+    ],
+    "description": "Clear DockHand's pending-update records for one container or a whole environment. Images and containers are not changed.",
+    "input_schema_sha256": "06f547de389af1e4876757982aa47a6e034f945281621ea550385856fcc314d3",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_clone_volume",
+    "title": "Clone volume",
+    "tier": "operator",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "POST",
+        "/api/volumes/{name}/clone"
+      ]
+    ],
+    "description": "Copy a volume's data into a new named volume with the same driver and labels.",
+    "input_schema_sha256": "0f2f5602cb069c9057be5279cedf430e0f086d18635a419facb630e98f45c30a",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_connect_container_to_network",
+    "title": "Connect container to network",
+    "tier": "operator",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "GET",
+        "/api/networks"
+      ],
+      [
+        "GET",
+        "/api/containers"
+      ],
+      [
+        "POST",
+        "/api/networks/{id}/connect"
+      ]
+    ],
+    "description": "Connect a container to a network.",
+    "input_schema_sha256": "561b561f6439e74b49cc10a88b4ced97969d0fcd7937d4ccc005d46c5bc76dad",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_create_network",
+    "title": "Create network",
+    "tier": "operator",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "POST",
+        "/api/networks"
+      ]
+    ],
+    "description": "Create a Docker network in an environment. Returns the new network's id.",
+    "input_schema_sha256": "485364b8be59b00b67db12437d9fda9026ce05a43db738d4212a177fad4b19dc",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_create_stack",
+    "title": "Create stack",
+    "tier": "operator",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "GET",
+        "/api/stacks"
+      ],
+      [
+        "GET",
+        "/api/containers"
+      ],
+      [
+        "POST",
+        "/api/stacks/{name}/validate"
+      ],
+      [
+        "POST",
+        "/api/stacks"
+      ],
+      [
+        "GET",
+        "/api/stacks/{name}/compose"
+      ],
+      [
+        "GET",
+        "/api/stacks/{name}/env"
+      ]
+    ],
+    "description": "Create a compose stack after compose guardrail and DockHand validation, optionally starting it, and verify what was saved. Secret values given here pass through the model's context.",
+    "input_schema_sha256": "c9018b80ec817826738e46727318b0785202388edacc785a89cfe7ce3dd3d7c4",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_create_volume",
+    "title": "Create volume",
+    "tier": "operator",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "POST",
+        "/api/volumes"
+      ]
+    ],
+    "description": "Create a named Docker volume in an environment.",
+    "input_schema_sha256": "15c396af11d1fcd76a0ee044affd45a485355d9a46c4411de466289dce549f45",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_deploy_git_repository",
+    "title": "Deploy git repository",
+    "tier": "operator",
+    "endpoints": [
+      [
+        "POST",
+        "/api/git/repositories/{id}/deploy"
+      ]
+    ],
+    "description": "Deploy the compose stacks defined in a git repository after pulling its latest commit.",
+    "input_schema_sha256": "4cdd5ecae4e493bfc005038d1573f474e3c567a37b7a54aa57973da0b80368eb",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_deploy_git_stack",
+    "title": "Deploy git stack",
+    "tier": "operator",
+    "endpoints": [
+      [
+        "POST",
+        "/api/git/stacks/{id}/deploy"
+      ],
+      [
+        "GET",
+        "/api/jobs/{id}"
+      ]
+    ],
+    "description": "Deploy a git stack from its repository. Returns DockHand's result and the last progress lines.",
+    "input_schema_sha256": "647505baa70ea4716700d7a396ff880a07b1363c3a6c231d8a1432db4e046edf",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_deploy_stack",
+    "title": "Deploy stack",
+    "tier": "operator",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "GET",
+        "/api/stacks"
+      ],
+      [
+        "GET",
+        "/api/stacks/{name}/env/raw"
+      ],
+      [
+        "GET",
+        "/api/stacks/{name}/env"
+      ],
+      [
+        "POST",
+        "/api/stacks/{name}/deploy"
+      ],
+      [
+        "GET",
+        "/api/jobs/{id}"
+      ]
+    ],
+    "description": "Deploy a stack (docker compose up), optionally pulling, building and force-recreating. Returns DockHand's result and the last progress lines.",
+    "input_schema_sha256": "1f778f43ddcb8e96730616f5a77ff216ffab261adf5e7f7fd3137ab68375d772",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_disconnect_container_from_network",
+    "title": "Disconnect container from network",
+    "tier": "operator",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "GET",
+        "/api/networks"
+      ],
+      [
+        "GET",
+        "/api/containers"
+      ],
+      [
+        "POST",
+        "/api/networks/{id}/disconnect"
+      ]
+    ],
+    "description": "Disconnect a container from a network.",
+    "input_schema_sha256": "462f8afbc3c8b1c7d280b8a814592dc1f6f8cb6a1ef80faddf4e15027bcb2bc5",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_modify_stack_env",
+    "title": "Modify stack .env variables",
+    "tier": "operator",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "GET",
+        "/api/stacks"
+      ],
+      [
+        "GET",
+        "/api/stacks/{name}/env/raw"
+      ],
+      [
+        "GET",
+        "/api/stacks/{name}/env"
+      ],
+      [
+        "GET",
+        "/api/stacks/{name}/compose"
+      ],
+      [
+        "PUT",
+        "/api/stacks/{name}/env/raw"
+      ]
+    ],
+    "description": "Set, rename or delete variables in a stack's .env file, keeping comments and order, and verify the result by reading it back. Returns which keys changed.",
+    "input_schema_sha256": "8490608ab52fef5f45003a9f7b18243254a36b2b3e128af879c21c3e479ff82f",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_pause_container",
+    "title": "Pause container",
+    "tier": "operator",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "GET",
+        "/api/containers"
+      ],
+      [
+        "POST",
+        "/api/containers/{id}/pause"
+      ]
+    ],
+    "description": "Pause all processes in a running container. Returns the container's state and status afterwards.",
+    "input_schema_sha256": "94a4a18d152d935eb478447c9abdbed60ac57e436d05335060efa43c255672ff",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_pull_image",
+    "title": "Pull image",
+    "tier": "operator",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "POST",
+        "/api/images/pull"
+      ],
+      [
+        "GET",
+        "/api/jobs/{id}"
+      ]
+    ],
+    "description": "Pull an image into an environment, optionally scanning it afterwards. Returns DockHand's result and the last progress lines.",
+    "input_schema_sha256": "4ebc826cbfe0e308a4cea9bfb68ba3fb58b89fbaef6173b4624bfc6d6658ce03",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_rename_container",
+    "title": "Rename container",
+    "tier": "operator",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "GET",
+        "/api/containers"
+      ],
+      [
+        "POST",
+        "/api/containers/{id}/rename"
+      ]
+    ],
+    "description": "Rename a container. Returns its name, state and status afterwards.",
+    "input_schema_sha256": "b74c7d12fd1591e9bdcfb8bc50a400ff9faac700ca01cd3096c9c09000d1eeb7",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_restart_container",
+    "title": "Restart container",
+    "tier": "operator",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "GET",
+        "/api/containers"
+      ],
+      [
+        "POST",
+        "/api/containers/{id}/restart"
+      ]
+    ],
+    "description": "Restart a container. Returns the container's state and status afterwards.",
+    "input_schema_sha256": "94a4a18d152d935eb478447c9abdbed60ac57e436d05335060efa43c255672ff",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_restart_stack",
+    "title": "Restart stack",
+    "tier": "operator",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "GET",
+        "/api/stacks"
+      ],
+      [
+        "GET",
+        "/api/stacks/{name}/env/raw"
+      ],
+      [
+        "GET",
+        "/api/stacks/{name}/env"
+      ],
+      [
+        "POST",
+        "/api/stacks/{name}/restart"
+      ],
+      [
+        "GET",
+        "/api/jobs/{id}"
+      ]
+    ],
+    "description": "Restart a stack in place, in dependency order, or by recreating its containers. Returns DockHand's result and the last progress lines.",
+    "input_schema_sha256": "0b8159e97a33fe4c1208cacbe9166bc243c2ac4fb1bbb44ed82a71e5501654c2",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_run_schedule_now",
+    "title": "Run schedule now",
+    "tier": "operator",
+    "endpoints": [
+      [
+        "POST",
+        "/api/schedules/{type}/{id}/run"
+      ]
+    ],
+    "description": "Run one container-update, git-stack-sync or environment-update-check schedule once, outside its cron. Returns DockHand's result message.",
+    "input_schema_sha256": "6abc6cc3c074b55d8a5a956986c5ba723057c45629cd0f9a38ab9cd53a21289b",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_scan_all_images",
+    "title": "Scan all images",
+    "tier": "operator",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "POST",
+        "/api/vulnerabilities/scan-all"
+      ],
+      [
+        "GET",
+        "/api/jobs/{id}"
+      ]
+    ],
+    "description": "Scan every image in an environment for vulnerabilities and store the results. Returns DockHand's summary, or an operation id to check later.",
+    "input_schema_sha256": "d09b2532e830a49b215066372ce44b108fb041cfb639de2a97d1d990a3f5adeb",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_scan_image",
+    "title": "Scan image",
+    "tier": "operator",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "POST",
+        "/api/images/scan"
+      ],
+      [
+        "GET",
+        "/api/images/scan"
+      ],
+      [
+        "GET",
+        "/api/jobs/{id}"
+      ]
+    ],
+    "description": "Scan an image for vulnerabilities and store the result. Returns the stored scan's summary with severity counts.",
+    "input_schema_sha256": "c7ab57691ded654fe0e0bb2038b324f0ca98f56ea49ec7fe6a7fce50f7cce828",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_set_container_auto_update",
+    "title": "Set container auto-update",
+    "tier": "operator",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "GET",
+        "/api/containers"
+      ],
+      [
+        "POST",
+        "/api/auto-update/{containerName}"
+      ],
+      [
+        "DELETE",
+        "/api/auto-update/{containerName}"
+      ]
+    ],
+    "description": "Enable, change or remove automatic image updates for a container. Returns the stored setting.",
+    "input_schema_sha256": "9b2153106c128f9d194bd6efceffc37a41ba7d68ca631025fec6af0a547e5517",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_start_container",
+    "title": "Start container",
+    "tier": "operator",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "GET",
+        "/api/containers"
+      ],
+      [
+        "POST",
+        "/api/containers/{id}/start"
+      ]
+    ],
+    "description": "Start a stopped container. Returns the container's state and status afterwards.",
+    "input_schema_sha256": "94a4a18d152d935eb478447c9abdbed60ac57e436d05335060efa43c255672ff",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_start_stack",
+    "title": "Start stack",
+    "tier": "operator",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "GET",
+        "/api/stacks"
+      ],
+      [
+        "GET",
+        "/api/stacks/{name}/env/raw"
+      ],
+      [
+        "GET",
+        "/api/stacks/{name}/env"
+      ],
+      [
+        "POST",
+        "/api/stacks/{name}/start"
+      ],
+      [
+        "GET",
+        "/api/jobs/{id}"
+      ]
+    ],
+    "description": "Start a stack's containers (docker compose start/up) as a DockHand job. Returns the job's status, result and last output lines.",
+    "input_schema_sha256": "2a9a6545f2b86cef3bd477fa949b222bf2a04d96aae62c873824339ba4e56e18",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_stop_container",
+    "title": "Stop container",
+    "tier": "operator",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "GET",
+        "/api/containers"
+      ],
+      [
+        "POST",
+        "/api/containers/{id}/stop"
+      ]
+    ],
+    "description": "Stop a running container. Returns the container's state and status afterwards.",
+    "input_schema_sha256": "94a4a18d152d935eb478447c9abdbed60ac57e436d05335060efa43c255672ff",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_stop_stack",
+    "title": "Stop stack",
+    "tier": "operator",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "GET",
+        "/api/stacks"
+      ],
+      [
+        "GET",
+        "/api/stacks/{name}/env/raw"
+      ],
+      [
+        "GET",
+        "/api/stacks/{name}/env"
+      ],
+      [
+        "POST",
+        "/api/stacks/{name}/stop"
+      ],
+      [
+        "GET",
+        "/api/jobs/{id}"
+      ]
+    ],
+    "description": "Stop a stack's containers (docker compose stop) as a DockHand job. Returns the job's status, result and last output lines.",
+    "input_schema_sha256": "2a9a6545f2b86cef3bd477fa949b222bf2a04d96aae62c873824339ba4e56e18",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_sync_git_repository",
+    "title": "Sync git repository",
+    "tier": "operator",
+    "endpoints": [
+      [
+        "POST",
+        "/api/git/repositories/{id}/sync"
+      ]
+    ],
+    "description": "Pull a git repository's local clone to the latest commit of its tracked branch.",
+    "input_schema_sha256": "4cdd5ecae4e493bfc005038d1573f474e3c567a37b7a54aa57973da0b80368eb",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_sync_git_stack",
+    "title": "Sync git stack",
+    "tier": "operator",
+    "endpoints": [
+      [
+        "POST",
+        "/api/git/stacks/{id}/sync"
+      ]
+    ],
+    "description": "Pull a git stack's repository clone to the latest commit of its tracked branch.",
+    "input_schema_sha256": "647505baa70ea4716700d7a396ff880a07b1363c3a6c231d8a1432db4e046edf",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_tag_image",
+    "title": "Tag image",
+    "tier": "operator",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "GET",
+        "/api/images"
+      ],
+      [
+        "POST",
+        "/api/images/{id}/tag"
+      ]
+    ],
+    "description": "Add a repository tag to an image in an environment.",
+    "input_schema_sha256": "50a5e89c91efecb238c204f2b40785f19c0727f4d832e7f166df80a3abf3d0b7",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_test_environment",
+    "title": "Test environment",
+    "tier": "operator",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "POST",
+        "/api/environments/{id}/test"
+      ]
+    ],
+    "description": "Test DockHand's connection to a saved environment's Docker endpoint without changing it. Returns success and the engine's version and counts.",
+    "input_schema_sha256": "677b8072f6022b953e274a9ecda93ee080513cef56310acf6d50227f1a0a5831",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_toggle_schedule",
+    "title": "Toggle schedule",
+    "tier": "operator",
+    "endpoints": [
+      [
+        "POST",
+        "/api/schedules/{type}/{id}/toggle"
+      ],
+      [
+        "POST",
+        "/api/schedules/system/{id}/toggle"
+      ]
+    ],
+    "description": "Enable a disabled schedule or disable an enabled one. Returns whether it is now enabled.",
+    "input_schema_sha256": "edf03be4acdad455bd7a15b81c7f596358c290a711c99b92c8982663a74dba8b",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_unpause_container",
+    "title": "Unpause container",
+    "tier": "operator",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "GET",
+        "/api/containers"
+      ],
+      [
+        "POST",
+        "/api/containers/{id}/unpause"
+      ]
+    ],
+    "description": "Resume the processes of a paused container. Returns the container's state and status afterwards.",
+    "input_schema_sha256": "94a4a18d152d935eb478447c9abdbed60ac57e436d05335060efa43c255672ff",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_update_containers",
+    "title": "Update containers",
+    "tier": "operator",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "GET",
+        "/api/containers"
+      ],
+      [
+        "GET",
+        "/api/containers/{id}"
+      ],
+      [
+        "POST",
+        "/api/containers/batch-update"
+      ]
+    ],
+    "description": "Recreate containers with their latest images, keeping their configuration. Refuses the whole call if any carries the label dockhand.update=false.",
+    "input_schema_sha256": "27c302c32c71ad0946277bc16841cb3512d40257561158e07e0750df7c538bf9",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_update_stack_compose",
+    "title": "Update stack compose",
+    "tier": "operator",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "GET",
+        "/api/stacks"
+      ],
+      [
+        "GET",
+        "/api/stacks/{name}/env/raw"
+      ],
+      [
+        "GET",
+        "/api/stacks/{name}/env"
+      ],
+      [
+        "POST",
+        "/api/stacks/{name}/validate"
+      ],
+      [
+        "PUT",
+        "/api/stacks/{name}/compose"
+      ],
+      [
+        "GET",
+        "/api/stacks/{name}/compose"
+      ]
+    ],
+    "description": "Replace a stack's compose file after compose guardrail and DockHand validation, optionally redeploying, and verify the saved file by reading it back.",
+    "input_schema_sha256": "9e4b0ff746a42b08cdc89adb52cc4a862ccc3a828b5e02526fc0c39a9c6aeb6b",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_update_stack_env_raw",
+    "title": "Replace stack .env file",
+    "tier": "operator",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "GET",
+        "/api/stacks"
+      ],
+      [
+        "GET",
+        "/api/stacks/{name}/env/raw"
+      ],
+      [
+        "GET",
+        "/api/stacks/{name}/env"
+      ],
+      [
+        "GET",
+        "/api/stacks/{name}/compose"
+      ],
+      [
+        "PUT",
+        "/api/stacks/{name}/env/raw"
+      ]
+    ],
+    "description": "Replace a stack's .env file with new raw content after compose guardrail checks, and verify it by reading it back. Empty content deletes the file only with allow_empty.",
+    "input_schema_sha256": "bb0f4d914b8582b0005e82f9e597bf7add750cda9e709a56c162bc10ac016a84",
+    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  }
+]

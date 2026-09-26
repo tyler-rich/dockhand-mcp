@@ -1,0 +1,4 @@
+[
+  {"tool": "dockhand_health", "args": {}, "expect": {"ok": true, "equals": {"data.dockhand.status": "ok"}}},
+  {"tool": "dockhand_get_operation", "args": {"op_id": "00000000-0000-4000-8000-000000000000"}, "expect": {"ok": false, "error.code": "operation_unknown"}}
+]

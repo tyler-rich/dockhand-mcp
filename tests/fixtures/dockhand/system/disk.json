@@ -1,0 +1,37 @@
+{
+  "_comment": "Invented; the spec's diskUsage is untyped. Shape follows Docker's system df as live DockHand returns it. {{NAME}} placeholders are filled at load time.",
+  "body": {
+    "diskUsage": {
+      "LayersSize": 1000,
+      "Images": [
+        {
+          "Id": "sha256:{{IMG_NGINX}}",
+          "Size": 600
+        },
+        {
+          "Id": "sha256:{{IMG_REDIS}}",
+          "Size": 400
+        }
+      ],
+      "Containers": [
+        {
+          "Id": "{{CID_WEB}}",
+          "SizeRw": 10
+        }
+      ],
+      "Volumes": [],
+      "BuildCache": [],
+      "ImageUsage": {
+        "ActiveCount": 1,
+        "Items": [
+          {
+            "Id": "sha256:{{IMG_NGINX}}"
+          }
+        ],
+        "Reclaimable": 400,
+        "TotalCount": 2,
+        "TotalSize": 1000
+      }
+    }
+  }
+}

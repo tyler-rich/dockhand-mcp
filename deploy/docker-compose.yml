@@ -1,0 +1,51 @@
+# Hardened reference deployment (docs/SECURITY.md §7). Quick start: README.md; DockHand side:
+# docs/DOCKHAND-SETUP.md; every variable: .env.example.
+services:
+  dockhand-mcp:
+    # Pin by digest: copy the `image:` line from the release notes of the version you deploy
+    # (…:X.Y.Z@sha256:…), verify it with the release's `cosign verify` line, and bump it on purpose.
+    # A tag alone can be moved; a digest cannot.
+    image: ghcr.io/tyler-rich/dockhand-mcp:0.1.0
+    # Startup is fail-closed: an invalid setting, or no DockHand token while DockHand has
+    # authentication on or cannot be reached to confirm it is off, makes the container exit with a
+    # one-line reason (`docker logs <container>`). `unless-stopped` retries, so a DockHand that
+    # was still starting is picked up on a later attempt. Troubleshooting: docs/DOCKHAND-SETUP.md,
+    # "Startup and runtime failures".
+    restart: unless-stopped
+    user: "10001:10001"
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid,nodev
+    ports:
+      - "127.0.0.1:8080:8080"          # or omit and put it on your reverse-proxy network
+    environment:
+      DOCKHAND_URL: https://dockhand.example.test
+      DOCKHAND_TOKEN_FILE: /run/secrets/dockhand_token
+      DOCKHAND_MCP_TOKEN_FILE: /run/secrets/mcp_token
+      # operator: read tools plus reversible writes (start/stop/deploy, compose and .env edits with
+      # read-back verification). Switch to admin only while you need destructive tools (remove,
+      # prune, stack down/delete, each needing a human's approval), then switch back.
+      # read-only is the server's own default when this line is absent.
+      DOCKHAND_MCP_PROFILE: operator
+      # With clients that speak MCP 2026-07-28 (a current Claude Code over HTTP), require the
+      # human approval form for destructive tools instead of the weaker `confirm` fallback:
+      # DOCKHAND_MCP_CONFIRM_MODE: elicitation     (docs/CLIENTS.md, "Confirm mode and approvals")
+      DOCKHAND_MCP_BIND: 0.0.0.0        # inside the container; exposure is controlled by `ports`
+      DOCKHAND_MCP_ALLOWED_HOSTS: localhost,127.0.0.1,mcp.example.test
+    secrets: [dockhand_token, mcp_token]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    deploy:
+      resources:
+        limits: { cpus: "0.50", memory: 256M, pids: 128 }
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys;sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8080/healthz',timeout=3).status==200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+secrets:
+  dockhand_token: { file: ./secrets/dockhand_token }
+  mcp_token: { file: ./secrets/mcp_token }

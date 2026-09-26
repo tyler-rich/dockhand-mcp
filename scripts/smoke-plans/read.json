@@ -1,0 +1,65 @@
+[
+  {"tool": "dockhand_health", "expect": {"ok": true}},
+  {"tool": "dockhand_list_environments", "expect": {"ok": true}, "save": {"env": "data.items.0.id"}},
+  {"tool": "dockhand_get_environment", "args": {"environment_id": "${env}"}, "expect": {"ok": true}},
+  {"tool": "dockhand_get_host_info", "args": {"environment_id": "${env}"}, "expect": {"ok": true}},
+  {"tool": "dockhand_get_system_info", "args": {"environment_id": "${env}"}, "expect": {"ok": true}},
+  {"tool": "dockhand_get_dashboard_stats", "args": {"environment_id": "${env}"}, "expect": {"ok": true}},
+
+  {"tool": "dockhand_list_containers", "args": {"environment_id": "${env}", "state": "running", "limit": 1}, "expect": {"ok": true}, "save": {"container": "data.items.0.name", "container_id": "data.items.0.id"}},
+  {"tool": "dockhand_get_container", "args": {"environment_id": "${env}", "ref": "${container}"}, "expect": {"ok": true, "each_matches": {"data.Config.Env": "[^=]+(=<redacted>)?"}}},
+  {"tool": "dockhand_get_container", "args": {"environment_id": "${env}", "ref": "${container_id}", "sections": ["State"]}, "expect": {"ok": true}},
+  {"tool": "dockhand_get_container", "args": {"environment_id": "${env}", "ref": "/leading-slash"}, "expect": {"ok": false, "error.code": "validation_error"}},
+  {"tool": "dockhand_get_container_logs", "args": {"environment_id": "${env}", "ref": "${container}", "tail": 20}, "expect": {"ok": true}},
+  {"tool": "dockhand_get_container_stats", "args": {"environment_id": "${env}", "ref": "${container}"}, "expect": {"ok": true}},
+  {"tool": "dockhand_get_all_container_stats", "args": {"environment_id": "${env}", "limit": 5}, "expect": {"ok": true}},
+  {"tool": "dockhand_get_container_processes", "args": {"environment_id": "${env}", "ref": "${container}"}, "expect": {"ok": true}},
+  {"tool": "dockhand_get_container_sizes", "args": {"environment_id": "${env}"}, "expect": {"ok": true}},
+  {"tool": "dockhand_generate_container_compose", "args": {"environment_id": "${env}", "ref": "${container}"}, "expect": {"ok": true, "equals": {"data.env_redacted": true}}},
+  {"tool": "dockhand_get_pending_updates", "args": {"environment_id": "${env}"}, "expect": {"ok": true}},
+  {"tool": "dockhand_get_version_notes", "args": {"environment_id": "${env}", "ref": "${container}", "versions": ["latest"]}, "expect": {"any_of": [{"ok": true}, {"error.code": "dockhand_http_error"}]}},
+
+  {"tool": "dockhand_list_stacks", "args": {"environment_id": "${env}", "limit": 500}, "expect": {"ok": true}, "save": {"stack": {"path": "data.items", "pick": {"field": "name", "skip_prefix": "mcp-smoke-", "probe": {"tool": "dockhand_get_stack_compose", "args": {"environment_id": "${env}", "stack": "${candidate}"}, "expect": {"ok": true}}}}}},
+  {"tool": "dockhand_get_stack_compose", "args": {"environment_id": "${env}", "stack": "${stack}"}, "expect": {"ok": true}},
+  {"tool": "dockhand_get_stack_env", "args": {"environment_id": "${env}", "stack": "${stack}"}, "expect": {"ok": true}},
+  {"tool": "dockhand_get_stack_env_raw", "args": {"environment_id": "${env}", "stack": "${stack}"}, "expect": {"ok": true}},
+  {"tool": "dockhand_list_stack_deploys", "args": {"environment_id": "${env}", "stack": "${stack}", "limit": 5}, "expect": {"ok": true}, "save": {"run_id": {"path": "data.items.0.id", "default": 1}}},
+  {"tool": "dockhand_get_stack_deploy_log", "args": {"stack": "${stack}", "run_id": "${run_id}", "max_bytes": 8192}, "expect": {"any_of": [{"ok": true}, {"error.code": "not_found"}]}},
+  {"tool": "dockhand_preview_stack_delete", "args": {"environment_id": "${env}", "stack": "${stack}"}, "expect": {"ok": true}},
+  {"tool": "dockhand_validate_stack_compose", "args": {"environment_id": "${env}", "stack": "${stack}", "compose": "services:\n  web:\n    image: nginx:1.27\n", "existing": true}, "expect": {"ok": true}},
+  {"tool": "dockhand_validate_stack_env", "args": {"environment_id": "${env}", "stack": "${stack}"}, "expect": {"ok": true}},
+  {"tool": "dockhand_get_stack_paths", "args": {"environment_id": "${env}", "stack": "${stack}"}, "expect": {"ok": true}},
+
+  {"tool": "dockhand_list_images", "args": {"environment_id": "${env}", "limit": 1}, "expect": {"ok": true}, "save": {"image": "data.items.0.id"}},
+  {"tool": "dockhand_get_image_history", "args": {"environment_id": "${env}", "image": "${image}"}, "expect": {"ok": true}},
+  {"tool": "dockhand_get_image_scan", "args": {"environment_id": "${env}", "image": "${image}", "limit": 5}, "expect": {"ok": true}},
+
+  {"tool": "dockhand_list_volumes", "args": {"environment_id": "${env}", "limit": 1}, "expect": {"ok": true}, "save": {"volume": "data.items.0.name"}},
+  {"tool": "dockhand_get_volume", "args": {"environment_id": "${env}", "volume": "${volume}"}, "expect": {"ok": true}},
+  {"tool": "dockhand_list_networks", "args": {"environment_id": "${env}"}, "expect": {"ok": true}, "save": {"network": "data.items.0.name"}},
+  {"tool": "dockhand_get_network", "args": {"environment_id": "${env}", "network": "${network}"}, "expect": {"ok": true}},
+
+  {"tool": "dockhand_get_job", "args": {"job_id": "00000000-0000-4000-8000-000000000000"}, "expect": {"ok": false, "error.code": "not_found"}},
+  {"tool": "dockhand_get_operation", "args": {"op_id": "00000000-0000-4000-8000-000000000000"}, "expect": {"ok": false, "error.code": "operation_unknown"}},
+
+  {"tool": "dockhand_get_activity", "args": {"environment_id": "${env}", "limit": 5}, "expect": {"ok": true}},
+  {"tool": "dockhand_get_activity_stats", "args": {"environment_id": "${env}"}, "expect": {"ok": true}},
+  {"tool": "dockhand_get_audit_log", "args": {"limit": 5}, "expect": {"any_of": [{"ok": true}, {"error.code": "not_available"}]}},
+
+  {"tool": "dockhand_list_schedules", "expect": {"ok": true}},
+  {"tool": "dockhand_list_schedule_executions", "args": {"limit": 5}, "expect": {"ok": true}, "save": {"execution": "data.items.0.id"}},
+  {"tool": "dockhand_get_schedule_execution", "args": {"execution_id": "${execution}", "max_bytes": 8192}, "expect": {"ok": true}},
+  {"tool": "dockhand_get_auto_update_settings", "args": {"environment_id": "${env}"}, "expect": {"ok": true}},
+  {"tool": "dockhand_get_auto_update_settings", "args": {"environment_id": "${env}", "container_name": "${container}"}, "expect": {"ok": true}},
+
+  {"tool": "dockhand_list_vulnerabilities", "args": {"environment_id": "${env}", "limit": 5}, "expect": {"ok": true}},
+  {"tool": "dockhand_get_vulnerability_summary", "args": {"environment_id": "${env}"}, "expect": {"ok": true}},
+
+  {"tool": "dockhand_list_registries", "expect": {"ok": true}},
+  {"tool": "dockhand_search_registry", "args": {"term": "nginx", "limit": 3}, "expect": {"ok": true}},
+  {"tool": "dockhand_list_image_tags", "args": {"image": "library/nginx", "page_size": 5}, "expect": {"ok": true}},
+
+  {"tool": "dockhand_get_settings", "args": {"environment_id": "${env}"}, "expect": {"ok": true}},
+  {"tool": "dockhand_list_git_repositories", "expect": {"ok": true}},
+  {"tool": "dockhand_list_git_stacks", "args": {"environment_id": "${env}"}, "expect": {"ok": true}}
+]
