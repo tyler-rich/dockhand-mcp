@@ -6,13 +6,13 @@ Versions follow [Semantic Versioning](https://semver.org/).
 
 ## [0.1.1] — 2026-09-26
 
-### 2026-09-26 — Fix #17: 5xx after save; scan after pull (PR #25, branch fix/issue-17)
+### 2026-09-26 — Fix archive issue 17: 5xx after save; scan after pull (archive PR 25, branch fix/issue-17)
 
-The two questions S3f left open, deferred to after v0.1.0 as #17, are fixed for v0.1.1.
+The two questions S3f left open, deferred to after v0.1.0 as archive issue 17, are fixed for v0.1.1.
 - A content write that DockHand answers with a 5xx, or whose connection drops after the request was sent, is read back once. The result says whether the content was saved.
 - `dockhand_pull_image` with `scan_after_pull` reads the scan's outcome from the pull's own events. A pull whose scan failed is never a success.
 
-### 2026-09-26 — Scoping: OAuth resource-server mode (PR #26, branch docs/scoping-oauth)
+### 2026-09-26 — Scoping: OAuth resource-server mode (archive PR 26, branch docs/scoping-oauth)
 
 Phase 5 scoping only; no code or configuration changed. `docs/handoff/oauth-resource-server.md` holds the full design, evidence and test plan. Every claim in it carries a source fetched on 2026-09-26, marked verified or unverified. Recommendation:
 - **Implement `oauth` mode now, as our own middleware** in the auth slot of the ARCHITECTURE §3 pipeline, beside `BearerAuthMiddleware`.
@@ -21,7 +21,7 @@ Phase 5 scoping only; no code or configuration changed. `docs/handoff/oauth-reso
 - **Ship it as experimental**, recommending the `operator` profile for connector-facing instances.
 - **Model and effort** for the implementation session: Opus 5.5, high.
 
-### 2026-09-26 — Public launch (PR #27, branch chore/public-launch)
+### 2026-09-26 — Public launch (archive PR 27, branch chore/public-launch)
 
 The repository goes public as a **fresh repository imported from a clean squash** of this tree, not by changing this repository's visibility. History before the public import is kept in a **private archive repository**: every commit, PR, issue, review, run log and the v0.1.0 release. **v0.1.1 will be the first release in the public repository**; the v0.1.0 image stays published. This PR makes the tree clean for the import and does the rest of the launch preparation:
 - deployment-specific values removed from the tree (below);
@@ -33,7 +33,9 @@ The repository goes public as a **fresh repository imported from a clean squash*
 
 ### 2026-09-26 — Release v0.1.1 (PR #1, branch chore/release-0.1.1)
 
-Version 0.1.1 (`pyproject.toml`, `__version__`, `uv.lock`'s own entry), the first release in the public repository `tyler-rich/dockhand-mcp`. It ships the changes recorded since the v0.1.0 entry: the #17 fixes (read-back after a 5xx on a content write; a failed scan after a pull is never a success), the OAuth scoping document, and the public-launch changes. `CHANGELOG.md` gains a 0.1.1 section from `scripts/release-notes.py changelog`, unedited; the 0.1.0 section stays. No code change.
+Version 0.1.1 (`pyproject.toml`, `__version__`, `uv.lock`'s own entry), the first release in the public repository `tyler-rich/dockhand-mcp`. It ships the changes recorded since the v0.1.0 entry: the fixes for archive issue 17 (read-back after a 5xx on a content write; a failed scan after a pull is never a success), the OAuth scoping document, and the public-launch changes. With it, at the maintainer's request:
+- the deploy files and docs show a placeholder image, `ghcr.io/tyler-rich/dockhand-mcp:X.Y.Z@sha256:<digest>`, and say to copy the exact pinned `image:` line from the latest GitHub release notes;
+- release notes and CHANGELOG sections render issue and PR numbers from entries written before the public import as plain text (`archive PR 25`, `archive issue 17`), never `#25`.
 
 ## [0.1.0] — 2026-09-26
 

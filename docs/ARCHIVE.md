@@ -1251,22 +1251,38 @@ Unverified and to be checked live: the CIMD client ID URL of Claude's hosted app
 - cut v0.1.1.
 
 ### 2026-09-26 — Release v0.1.1 (PR #1, branch chore/release-0.1.1)
-**Decision:** Version 0.1.1 (`pyproject.toml`, `__version__`, `uv.lock`'s own entry), the first release in the public repository `tyler-rich/dockhand-mcp`. It ships the changes recorded since the v0.1.0 entry: the #17 fixes (read-back after a 5xx on a content write; a failed scan after a pull is never a success), the OAuth scoping document, and the public-launch changes. `CHANGELOG.md` gains a 0.1.1 section from `scripts/release-notes.py changelog`, unedited; the 0.1.0 section stays. No code change.
+**Decision:** Version 0.1.1 (`pyproject.toml`, `__version__`, `uv.lock`'s own entry), the first release in the public repository `tyler-rich/dockhand-mcp`. It ships the changes recorded since the v0.1.0 entry: the fixes for archive issue 17 (read-back after a 5xx on a content write; a failed scan after a pull is never a success), the OAuth scoping document, and the public-launch changes. With it, at the maintainer's request:
+- the deploy files and docs show a placeholder image, `ghcr.io/tyler-rich/dockhand-mcp:X.Y.Z@sha256:<digest>`, and say to copy the exact pinned `image:` line from the latest GitHub release notes;
+- release notes and CHANGELOG sections render issue and PR numbers from entries written before the public import as plain text (`archive PR 25`, `archive issue 17`), never `#25`.
 
-**Release mechanics, unchanged from v0.1.0:** `release.yml` on the `v0.1.1` tag. This repository has no earlier tag, so `release-notes.py` takes the entries after the v0.1.0 release entry (the public-launch rule), and the notes say "Changes since v0.1.0". A dry run starts at the #17 entry and ends with this one.
+No server code changed.
+
+**Release mechanics, unchanged from v0.1.0:** `release.yml` on the `v0.1.1` tag. This repository has no earlier tag, so `release-notes.py` takes the entries after the v0.1.0 release entry (the public-launch rule), and the notes say "Changes since v0.1.0". A dry run starts at the entry for archive issue 17 and ends with this one. `CHANGELOG.md` gains a 0.1.1 section from `scripts/release-notes.py changelog`, unedited. The 0.1.0 section is kept as it was, including its `#n` references (the maintainer asked for the 0.1.1 section only).
+
+**Archive references (`scripts/release-notes.py`):**
+- *Which entries:* those up to **and including** the "Public launch" entry (a heading `YYYY-MM-DD — Public launch…`), found in the whole §14 log. They were written in the private archive repository, so `#n` names that repository's items; on GitHub it would link to this repository's item of the same number. The launch entry itself is included because its own PR (archive PR 27) is an archive PR. Every later entry keeps `#n`, which links normally. Without a launch entry nothing changes.
+- *What changes:* `PR #n` → `archive PR n`; any other `#n` → `archive issue n` (in the archive, a bare number was always an issue: "Fix #6", "Fixes #9", "filed as #17"). Left alone: `owner/repo#n` (it names another repository and links correctly), `x#1`, HTML entities such as `&#39;`, and Markdown headings. Headings and decision paragraphs are both converted; which entries are new is decided on the raw headings, before conversion.
+- *Where:* `localise_references`, applied in `main` for both `notes` and `changelog`, with and without `--previous-archive`. `release.yml` is unchanged.
+- *Tests:* failing commit `cb1d879` (19 failed there: 10 new in `test_release_notes.py` with a new invented fixture `ARCHIVE-public-refs.md`, and 9 in the new `test_image_references.py`). Two existing CLI tests on the public-import fixture now expect its pre-launch headings as `(archive PR 3, …)` and `(archive PR 4, …)`; that expectation changes by design, and nothing else in them changed.
+
+**Image references:** `README.md`, `deploy/docker-compose.yml`, `deploy/dockhand-stack.yml`, `deploy/docker-run.md`, `docs/CLIENTS.md` and `docs/SECURITY.md` §7 now carry `ghcr.io/tyler-rich/dockhand-mcp:X.Y.Z@sha256:<digest>`, marked as a placeholder, with the instruction to copy the exact pinned `image:` line from the latest GitHub release notes. The digest-pinning guidance (a tag can be moved, a digest cannot; check with the release's `cosign verify` line) is kept. The placeholder is deliberately not pullable (Docker answers "invalid reference format"), so the reference compose no longer starts as committed until the line is replaced. It still parses, and `docker compose config` accepts it. `tests/test_image_references.py` fails when any tracked file other than `CHANGELOG.md` and `docs/ARCHIVE.md` names the image with a dotted version (`dockhand-mcp:0.1.0`, `…:v1.2`; `dockhand-mcp:8080`, a service name and port, does not count). It also checks that the six files carry the placeholder and the instruction. No hardening setting changed.
 
 **Correction to the public-launch entry:** it says "the v0.1.0 image stays published". The old GHCR package was deleted before this release, so v0.1.1's push creates `ghcr.io/tyler-rich/dockhand-mcp` fresh, linked to this repository by the image's `org.opencontainers.image.source` label. v0.1.0 is no longer pullable; its release notes remain in the private archive repository.
 
 **Pre-release checks (local, on this branch):**
-- The full suite passes (1666 passed, 2 skipped).
+- The full suite passes (1685 passed, 2 skipped).
 - Image built with the release's build arguments: labels `version=0.1.1` and `source=https://github.com/tyler-rich/dockhand-mcp`. Under `ci`'s hardened-run flags it is `healthy`, `/healthz` answers `200 {"status":"ok"}`, and `/licenses/LICENSE` and `/licenses/NOTICE` match the repository's.
 - OSV-Scanner v2.6.0 (still the newest release; the Windows binary's SHA-256 matched the digest GitHub publishes for that release asset) on per-platform docker archives, judged by `scripts/osv-image-gate.py`: **linux/amd64 and linux/arm64 both pass, 0 blocking, 65 reported**, the same Debian trixie findings as v0.1.0. No exception added; `osv-scanner.toml` still holds `IgnoredVulns = []`.
 - Live, read-only profile, against the built container with both token files mounted read-only and named by the `*_FILE` variables: `read.json` 53/53 in both `auto` and `legacy`.
+- The image checks ran before the placeholder and release-notes commits, which change no file the image contains.
 
 **Versions:** `uv lock --upgrade` changed nothing (52 packages): `mcp` 2.2.0, `mcp-types` 2.2.0, `httpx` 0.28.1, `pydantic` 2.13.5, `pydantic-settings` 2.15.0, `pyyaml` 6.0.3, `starlette` 1.7.0, `uvicorn` 0.54.0, `anyio` 4.15.1, `httpx2` 2.13.1, `certifi` 2026.7.22; dev `ruff` 0.16.9, `mypy` 2.3.1, `pytest` 9.1.1, `pytest-asyncio` 1.4.0, `respx` 0.23.1. python.org's newest stable release is still 3.14.7, so there is no Python bump. Base image, uv and the release tooling (cosign v3.1.3, syft v1.52.0, OSV-Scanner v2.6.0) are unchanged. No dependency was added.
 
-**Alternatives rejected:** hand-editing the CHANGELOG section (the generated text reads cleanly); re-tagging v0.1.0 in this repository (v0.1.0's tag and image belong to the archived history).
+**Alternatives rejected:**
+- Hand-editing the CHANGELOG section (the generated text reads cleanly).
+- Re-tagging v0.1.0 in this repository (v0.1.0's tag and image belong to the archived history).
+- Pinning the docs to `0.1.1` after the release (it goes stale at the next one; the placeholder never does).
+- Converting references by date (every entry from the launch day shares its date) instead of by position in the log.
+- Linking the archive references to the private repository (readers can't open them).
 
-**Deferred / follow-ups:**
-- `deploy/docker-compose.yml`, `deploy/dockhand-stack.yml`, `deploy/docker-run.md`, `docs/CLIENTS.md` and `docs/SECURITY.md` still show `dockhand-mcp:0.1.0`, which is no longer published. They need `0.1.1@sha256:<digest>` once the release has run (outside this PR's scope).
-- The issue and PR numbers in entries before the public launch (`#17`, `PR #25`, …) are the archive repository's. On GitHub they will link to this repository's items of the same number.
+**Deferred / follow-ups:** none.
