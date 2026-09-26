@@ -1,6 +1,6 @@
 [project]
 name = "dockhand-mcp"
-version = "0.1.0"
+version = "0.1.1"
 description = "Security-first MCP server exposing a curated, profile-gated subset of the DockHand REST API."
 readme = "README.md"
 requires-python = ">=3.14"

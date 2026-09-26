@@ -140,7 +140,9 @@ The process exits non-zero, with a one-line reason, when:
 ```yaml
 services:
   dockhand-mcp:
-    image: ghcr.io/<owner>/dockhand-mcp:0.1.0@sha256:<digest>
+    # Placeholder: copy the exact pinned `image:` line from the latest GitHub release notes.
+    # Always pin by digest.
+    image: ghcr.io/tyler-rich/dockhand-mcp:X.Y.Z@sha256:<digest>
     restart: unless-stopped
     user: "10001:10001"
     read_only: true

@@ -2,10 +2,11 @@
 # docs/DOCKHAND-SETUP.md; every variable: .env.example.
 services:
   dockhand-mcp:
-    # Pin by digest: copy the `image:` line from the release notes of the version you deploy
-    # (…:X.Y.Z@sha256:…), verify it with the release's `cosign verify` line, and bump it on purpose.
-    # A tag alone can be moved; a digest cannot.
-    image: ghcr.io/tyler-rich/dockhand-mcp:0.1.0
+    # PLACEHOLDER, replace before deploying: copy the exact pinned `image:` line from the latest
+    # GitHub release notes (https://github.com/tyler-rich/dockhand-mcp/releases/latest), verify it
+    # with the release's `cosign verify` line, and bump it on purpose. Pin by digest
+    # (…:X.Y.Z@sha256:…): a tag alone can be moved; a digest cannot.
+    image: ghcr.io/tyler-rich/dockhand-mcp:X.Y.Z@sha256:<digest>
     # Startup is fail-closed: an invalid setting, or no DockHand token while DockHand has
     # authentication on or cannot be reached to confirm it is off, makes the container exit with a
     # one-line reason (`docker logs <container>`). `unless-stopped` retries, so a DockHand that
