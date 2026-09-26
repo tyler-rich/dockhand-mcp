@@ -56,9 +56,10 @@ Design and threat model: [`docs/SECURITY.md`](docs/SECURITY.md). Locked decision
 You need a DockHand API token first: [`docs/DOCKHAND-SETUP.md`](docs/DOCKHAND-SETUP.md) walks
 through the dedicated user, the Enterprise role or the Free-edition warning, and the token.
 
-1. Copy [`deploy/docker-compose.yml`](deploy/docker-compose.yml) into a new directory. Replace
-   the `image:` line with the one from the [latest release](../../releases/latest) notes
-   (`…:X.Y.Z@sha256:…`), and set `DOCKHAND_URL` and `DOCKHAND_MCP_ALLOWED_HOSTS`.
+1. Copy [`deploy/docker-compose.yml`](deploy/docker-compose.yml) into a new directory. Its
+   `image:` line is a placeholder, `ghcr.io/tyler-rich/dockhand-mcp:X.Y.Z@sha256:<digest>`:
+   replace it with the exact pinned `image:` line from the latest GitHub
+   [release notes](../../releases/latest), and set `DOCKHAND_URL` and `DOCKHAND_MCP_ALLOWED_HOSTS`.
 2. Create the two token files. **The DockHand token file is required**: without it the server
    won't start (unless DockHand runs with authentication off).
    ```sh

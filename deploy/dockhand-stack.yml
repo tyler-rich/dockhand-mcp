@@ -9,8 +9,10 @@
 # another DockHand environment (docs/DOCKHAND-SETUP.md, "Environments and Docker daemons").
 services:
   dockhand-mcp:
-    # Pin by digest: copy the image line from the release notes (…:X.Y.Z@sha256:…).
-    image: ghcr.io/tyler-rich/dockhand-mcp:0.1.0
+    # PLACEHOLDER, replace before deploying: copy the exact pinned `image:` line from the latest
+    # GitHub release notes (https://github.com/tyler-rich/dockhand-mcp/releases/latest).
+    # Pin by digest (…:X.Y.Z@sha256:…): a tag alone can be moved; a digest cannot.
+    image: ghcr.io/tyler-rich/dockhand-mcp:X.Y.Z@sha256:<digest>
     # Fail-closed startup: see the comment in docker-compose.yml.
     restart: unless-stopped
     user: "10001:10001"

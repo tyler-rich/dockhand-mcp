@@ -8,6 +8,11 @@ them in; this script only reads files and prints Markdown. With no previous tag 
 a repository imported without its tags), the entries after the newest older release's entry are
 new (`entries_since_release`).
 
+Entries up to and including the "Public launch" entry were written in the private archive
+repository, so their `#n` names that repository's items; on GitHub it would link to this
+repository's item of the same number. They render as plain text, `archive PR n` / `archive issue n`
+(`localise_references`). Later entries keep `#n`.
+
     release-notes.py previous-tag --current vX.Y.Z --tags-file tags.txt
     release-notes.py notes --tag vX.Y.Z --archive NEW [--previous-archive OLD --previous-tag vA.B.C]
                            --image ghcr.io/OWNER/NAME --digest sha256:… --repository OWNER/REPO
@@ -37,6 +42,9 @@ _REPOSITORY = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 _DECISION = "**Decision:**"
 _LABEL = re.compile(r"^\*\*[^*]+:\*\*")
 _RELEASE_HEADING = re.compile(r"[\s,](v\d+\.\d+\.\d+)(?:\s+\(|$)")
+_PUBLIC_LAUNCH = re.compile(r"^\d{4}-\d{2}-\d{2} — Public launch\b")
+# `#n` or `PR #n` naming an item of this repository; not `owner/repo#n`, `x#1`, `&#39;` or `##`.
+_REFERENCE = re.compile(r"(?<![\w/.&#-])(?:\b(PR)\s+)?#(\d+)\b")
 
 
 @dataclass(frozen=True)
@@ -115,6 +123,29 @@ def entries_since_release(text: str, tag: str) -> tuple[str | None, list[Entry]]
             if version < now:
                 return match.group(1), entries[index + 1 :]
     return None, entries
+
+
+def archive_references(text: str) -> str:
+    """`#n` / `PR #n` as plain `archive issue n` / `archive PR n`, which GitHub does not link."""
+    return _REFERENCE.sub(lambda m: f"archive {'PR' if m.group(1) else 'issue'} {m.group(2)}", text)
+
+
+def localise_references(entries: list[Entry], archive: list[Entry]) -> list[Entry]:
+    """`entries` with archive references made plain in those written before the public import.
+
+    Those are the entries of `archive` (the whole §14 log) up to and including its "Public launch"
+    entry, whose own PR is an archive PR. Without such an entry nothing changes.
+    """
+    launch = next((i for i, e in enumerate(archive) if _PUBLIC_LAUNCH.match(e.title)), None)
+    if launch is None:
+        return list(entries)
+    pre_public = {e.title for e in archive[: launch + 1]}
+    return [
+        Entry(archive_references(e.title), archive_references(e.body))
+        if e.title in pre_public
+        else e
+        for e in entries
+    ]
 
 
 def _version(tag: str) -> tuple[int, int, int] | None:
@@ -276,6 +307,7 @@ def main(argv: list[str] | None = None) -> int:
         else:
             tag = args.tag if args.command == "notes" else "v" + args.version
             previous, entries = entries_since_release(archive, tag)
+        entries = localise_references(entries, parse_entries(archive))
         if args.command == "notes":
             print(
                 render_notes(
