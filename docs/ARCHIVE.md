@@ -1249,3 +1249,24 @@ Unverified and to be checked live: the CIMD client ID URL of Claude's hosted app
 - relink the GHCR package;
 - enable the security features;
 - cut v0.1.1.
+
+### 2026-09-26 — Release v0.1.1 (PR #1, branch chore/release-0.1.1)
+**Decision:** Version 0.1.1 (`pyproject.toml`, `__version__`, `uv.lock`'s own entry), the first release in the public repository `tyler-rich/dockhand-mcp`. It ships the changes recorded since the v0.1.0 entry: the #17 fixes (read-back after a 5xx on a content write; a failed scan after a pull is never a success), the OAuth scoping document, and the public-launch changes. `CHANGELOG.md` gains a 0.1.1 section from `scripts/release-notes.py changelog`, unedited; the 0.1.0 section stays. No code change.
+
+**Release mechanics, unchanged from v0.1.0:** `release.yml` on the `v0.1.1` tag. This repository has no earlier tag, so `release-notes.py` takes the entries after the v0.1.0 release entry (the public-launch rule), and the notes say "Changes since v0.1.0". A dry run starts at the #17 entry and ends with this one.
+
+**Correction to the public-launch entry:** it says "the v0.1.0 image stays published". The old GHCR package was deleted before this release, so v0.1.1's push creates `ghcr.io/tyler-rich/dockhand-mcp` fresh, linked to this repository by the image's `org.opencontainers.image.source` label. v0.1.0 is no longer pullable; its release notes remain in the private archive repository.
+
+**Pre-release checks (local, on this branch):**
+- The full suite passes (1666 passed, 2 skipped).
+- Image built with the release's build arguments: labels `version=0.1.1` and `source=https://github.com/tyler-rich/dockhand-mcp`. Under `ci`'s hardened-run flags it is `healthy`, `/healthz` answers `200 {"status":"ok"}`, and `/licenses/LICENSE` and `/licenses/NOTICE` match the repository's.
+- OSV-Scanner v2.6.0 (still the newest release; the Windows binary's SHA-256 matched the digest GitHub publishes for that release asset) on per-platform docker archives, judged by `scripts/osv-image-gate.py`: **linux/amd64 and linux/arm64 both pass, 0 blocking, 65 reported**, the same Debian trixie findings as v0.1.0. No exception added; `osv-scanner.toml` still holds `IgnoredVulns = []`.
+- Live, read-only profile, against the built container with both token files mounted read-only and named by the `*_FILE` variables: `read.json` 53/53 in both `auto` and `legacy`.
+
+**Versions:** `uv lock --upgrade` changed nothing (52 packages): `mcp` 2.2.0, `mcp-types` 2.2.0, `httpx` 0.28.1, `pydantic` 2.13.5, `pydantic-settings` 2.15.0, `pyyaml` 6.0.3, `starlette` 1.7.0, `uvicorn` 0.54.0, `anyio` 4.15.1, `httpx2` 2.13.1, `certifi` 2026.7.22; dev `ruff` 0.16.9, `mypy` 2.3.1, `pytest` 9.1.1, `pytest-asyncio` 1.4.0, `respx` 0.23.1. python.org's newest stable release is still 3.14.7, so there is no Python bump. Base image, uv and the release tooling (cosign v3.1.3, syft v1.52.0, OSV-Scanner v2.6.0) are unchanged. No dependency was added.
+
+**Alternatives rejected:** hand-editing the CHANGELOG section (the generated text reads cleanly); re-tagging v0.1.0 in this repository (v0.1.0's tag and image belong to the archived history).
+
+**Deferred / follow-ups:**
+- `deploy/docker-compose.yml`, `deploy/dockhand-stack.yml`, `deploy/docker-run.md`, `docs/CLIENTS.md` and `docs/SECURITY.md` still show `dockhand-mcp:0.1.0`, which is no longer published. They need `0.1.1@sha256:<digest>` once the release has run (outside this PR's scope).
+- The issue and PR numbers in entries before the public launch (`#17`, `PR #25`, …) are the archive repository's. On GitHub they will link to this repository's items of the same number.
