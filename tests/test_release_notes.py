@@ -227,6 +227,10 @@ IMPORT = FIXTURES / "ARCHIVE-public-import.md"
 RELEASE_010 = "2026-01-10 — Release pipeline and docs, v0.1.0 (PR #2, branch chore/release)"
 LABEL_FIX = "2026-01-12 — Fix the v0.1.0 image label (PR #3, branch fix/label)"
 LAUNCH = "2026-01-20 — Public launch (PR #4, branch chore/public-launch)"
+# How the notes render those headings: entries up to and including the public launch name the
+# archive repository's PRs and issues, as plain text that GitHub does not link.
+LABEL_FIX_OUT = "2026-01-12 — Fix the v0.1.0 image label (archive PR 3, branch fix/label)"
+LAUNCH_OUT = "2026-01-20 — Public launch (archive PR 4, branch chore/public-launch)"
 
 
 def test_without_a_previous_tag_entries_start_after_the_release_entry(rn: ModuleType) -> None:
@@ -270,7 +274,7 @@ def test_cli_notes_without_a_previous_tag(
     assert code == 0
     assert "## Changes since v0.1.0" in out
     assert "first release" not in out
-    assert LABEL_FIX in out and LAUNCH in out
+    assert LABEL_FIX_OUT in out and LAUNCH_OUT in out
     assert RELEASE_010 not in out and "Alpha scaffold" not in out
 
 
@@ -282,5 +286,63 @@ def test_cli_changelog_without_a_previous_archive(
     )
     out = capsys.readouterr().out
     assert code == 0
-    assert LAUNCH in out and LABEL_FIX in out
+    assert LAUNCH_OUT in out and LABEL_FIX_OUT in out
     assert RELEASE_010 not in out and "Alpha scaffold" not in out
+
+
+# Before the public launch, `#n` named the private archive repository's items; on GitHub it would
+# link to this repository's item of the same number. Those entries (the launch entry included,
+# whose own PR is an archive PR) render references as plain text; later entries keep `#n`.
+REFS = FIXTURES / "ARCHIVE-public-refs.md"
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("Fix #6: x (PR #8, branch b)", "Fix archive issue 6: x (archive PR 8, branch b)"),
+        ("replaces PR #2)", "replaces archive PR 2)"),
+        ("Fixes #9, which files #10.", "Fixes archive issue 9, which files archive issue 10."),
+        ("filed as #17", "filed as archive issue 17"),
+        ("see anthropics/claude-ai-mcp#153", "see anthropics/claude-ai-mcp#153"),
+        ("`x#1`, a&#39;b, ## Heading, #anchor", "`x#1`, a&#39;b, ## Heading, #anchor"),
+    ],
+)
+def test_archive_references_become_plain_text(rn: ModuleType, text: str, expected: str) -> None:
+    assert rn.archive_references(text) == expected
+
+
+def test_pre_public_entries_are_those_up_to_the_public_launch(rn: ModuleType) -> None:
+    entries = rn.parse_entries(REFS.read_text("utf-8"))
+    assert [e.title for e in rn.localise_references(entries, entries)] == [
+        "2026-01-10 — Release pipeline and docs, v0.1.0 (archive PR 2, branch chore/release)",
+        "2026-01-12 — Fix archive issue 5: stale label"
+        " (archive PR 6, branch fix/label; replaces archive PR 3)",
+        "2026-01-20 — Public launch (archive PR 7, branch chore/public-launch)",
+        "2026-01-22 — Fix #3: after the launch (PR #4, branch fix/after)",
+    ]
+
+
+def test_without_a_public_launch_entry_references_are_unchanged(rn: ModuleType) -> None:
+    entries = rn.parse_entries(V010.read_text("utf-8"))
+    assert rn.localise_references(entries, entries) == entries
+
+
+@pytest.mark.parametrize("command", ["notes", "changelog"])
+def test_cli_renders_archive_references_as_plain_text(
+    rn: ModuleType, capsys: pytest.CaptureFixture[str], command: str
+) -> None:
+    if command == "notes":
+        args = ["notes", "--tag", "v0.1.1", "--archive", str(REFS), "--image", IMAGE]
+        args += ["--digest", DIGEST, "--repository", OWNER_REPO]
+    else:
+        args = ["changelog", "--version", "0.1.1", "--date", "2026-01-23", "--archive", str(REFS)]
+    assert rn.main(args) == 0
+    out = capsys.readouterr().out
+    pre, _, post = out.partition("### 2026-01-22")
+    assert "Fix archive issue 5: stale label (archive PR 6," in pre
+    assert "Fixes archive issue 5, filed after upstream owner/other#12." in pre
+    assert "Public launch (archive PR 7," in pre
+    assert "history stays in archive PR 1 through archive PR 7." in pre
+    assert "#5" not in pre and "#6" not in pre and "#7" not in pre
+    assert post.startswith(" — Fix #3: after the launch (PR #4, branch fix/after)")
+    assert "Fixes #3, reported in this repository." in post
