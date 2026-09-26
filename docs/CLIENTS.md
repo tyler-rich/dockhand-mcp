@@ -70,8 +70,10 @@ today, run the server as a local stdio subprocess in Docker:
 
 1. Keep the DockHand token in a file only you can read (`docs/DOCKHAND-SETUP.md` step 4), for
    example `/home/you/.config/dockhand-mcp/dockhand_token`, owned by UID 10001 or readable by it.
-2. Add this to `claude_desktop_config.json` (absolute paths; the image line from the release
-   notes):
+2. Add this to `claude_desktop_config.json` (absolute paths). The image is a placeholder: use the
+   reference from the exact pinned `image:` line in the latest GitHub release notes
+   ([releases/latest](https://github.com/tyler-rich/dockhand-mcp/releases/latest)), digest
+   included:
    ```json
    {
      "mcpServers": {
@@ -89,7 +91,7 @@ today, run the server as a local stdio subprocess in Docker:
            "-e", "DOCKHAND_MCP_TRANSPORT=stdio",
            "-e", "DOCKHAND_MCP_AUTH_MODE=none",
            "-e", "DOCKHAND_MCP_PROFILE=operator",
-           "ghcr.io/tyler-rich/dockhand-mcp:0.1.0@sha256:<digest>",
+           "ghcr.io/tyler-rich/dockhand-mcp:X.Y.Z@sha256:<digest>",
            "serve"
          ]
        }

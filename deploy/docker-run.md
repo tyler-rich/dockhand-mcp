@@ -34,8 +34,14 @@ docker run -d --name dockhand-mcp \
   -e DOCKHAND_MCP_PROFILE=operator \
   -e DOCKHAND_MCP_BIND=0.0.0.0 \
   -e DOCKHAND_MCP_ALLOWED_HOSTS=localhost,127.0.0.1,mcp.example.test \
-  ghcr.io/tyler-rich/dockhand-mcp:0.1.0@sha256:<digest from the release notes>
+  ghcr.io/tyler-rich/dockhand-mcp:X.Y.Z@sha256:<digest>
 ```
+
+The last line is a placeholder. Replace it with the image reference from the exact pinned `image:`
+line in the latest GitHub release notes
+([releases/latest](https://github.com/tyler-rich/dockhand-mcp/releases/latest)), and check it with
+that release's `cosign verify` line. Keep the `@sha256:` digest: a tag alone can be moved; a digest
+cannot.
 
 | Flag | Why |
 |---|---|
@@ -59,7 +65,7 @@ If the container keeps restarting, `docker logs dockhand-mcp` ends with a one-li
 Check the configuration and DockHand access with the same flags, replacing the last two lines:
 
 ```sh
-docker run --rm … ghcr.io/tyler-rich/dockhand-mcp:0.1.0@sha256:<digest> check
+docker run --rm … ghcr.io/tyler-rich/dockhand-mcp:X.Y.Z@sha256:<digest> check
 ```
 
 Never add `-v /var/run/docker.sock:…`, `--privileged`, `--network host` or `--cap-add`: the server
