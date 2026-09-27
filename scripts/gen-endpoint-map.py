@@ -8,6 +8,12 @@ locally as docs/api/dockhand-openapi-1.0.49.json for the duration of the work.
 
 Usage:
     python3 scripts/gen-endpoint-map.py docs/api/dockhand-openapi-1.0.49.json > docs/api/ENDPOINT-MAP.md
+    python3 scripts/gen-endpoint-map.py --env-required docs/api/dockhand-openapi-1.0.49.json \
+        > src/dockhand_mcp/client/env_required.py
+
+`--env-required` writes the operations whose environment query parameter the spec marks required,
+as the Python module the DockHand client refuses them from when the parameter is missing (#5).
+The spec is not in the image, so the list is committed.
 
 DockHand's own endpoint summaries and descriptions are not copied into the map: they are text
 from DockHand's source, which is licensed BUSL-1.1, not Apache-2.0 (ARCHIVE §14, public launch).
@@ -168,8 +174,51 @@ def tier(tag: str, m: str, p: str) -> str:
     return "review"
 
 
-def main(path: str) -> None:
+ENV_PARAMS = ("env", "envId")
+
+
+def env_required_operations(d: dict) -> dict[tuple[str, str], str]:
+    """(METHOD, path template) → the environment query parameter the spec marks required."""
+    found = {}
+    for p, ops in d["paths"].items():
+        for m, o in ops.items():
+            if m not in ("get", "post", "put", "patch", "delete"):
+                continue
+            for pp in o.get("parameters", []):
+                if pp.get("in") == "query" and pp.get("required") and pp["name"] in ENV_PARAMS:
+                    found[(m.upper(), p)] = pp["name"]
+    return found
+
+
+def env_required_module(d: dict) -> str:
+    rows = sorted(env_required_operations(d).items(), key=lambda item: (item[0][1], item[0][0]))
+    out = [
+        "# SPDX-License-Identifier: Apache-2.0",
+        f'"""Operations whose environment query parameter DockHand requires (API v{d["info"]["version"]}).',
+        "",
+        "Generated from the `/api/docs` OpenAPI document by `scripts/gen-endpoint-map.py --env-required`;",
+        "do not edit. `client/dockhand.py` refuses a request to any of these, before sending it, when the",
+        "parameter is missing or empty (#5).",
+        '"""',
+        "",
+        "from collections.abc import Mapping",
+        "from types import MappingProxyType",
+        "from typing import Final",
+        "",
+        "# (METHOD, path template) -> the name of the required query parameter.",
+        "ENV_REQUIRED: Final[Mapping[tuple[str, str], str]] = MappingProxyType(",
+        "    {",
+    ]
+    out += [f'        ("{m}", "{p}"): "{name}",' for (m, p), name in rows]
+    out += ["    }", ")", ""]
+    return "\n".join(out)
+
+
+def main(path: str, env_required: bool = False) -> None:
     d = json.load(open(path))
+    if env_required:
+        sys.stdout.write(env_required_module(d))
+        return
     rows = []
     for p, ops in d["paths"].items():
         for m, o in ops.items():
@@ -254,4 +303,7 @@ Columns: **Async** = `job` (returns `{jobId}`; poll `GET /api/jobs/{id}`), `sse`
 
 
 if __name__ == "__main__":
-    main(sys.argv[1] if len(sys.argv) > 1 else "docs/api/dockhand-openapi-1.0.49.json")
+    args = sys.argv[1:]
+    as_module = "--env-required" in args
+    args = [a for a in args if a != "--env-required"]
+    main(args[0] if args else "docs/api/dockhand-openapi-1.0.49.json", env_required=as_module)
