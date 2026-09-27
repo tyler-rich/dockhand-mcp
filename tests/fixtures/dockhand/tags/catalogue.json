@@ -1,0 +1,10 @@
+{
+  "_comment": "Invented, from the spec's 200 schema for GET /api/tags ({tags: [{id, name, color}]}). Live DockHand 1.0.49 answered {\"tags\": []} (no tags defined), so no populated catalogue was observed.",
+  "body": {
+    "tags": [
+      {"id": 1, "name": "tag-x", "color": "green"},
+      {"id": 2, "name": "tag-y", "color": "blue"},
+      {"id": 3, "name": "tag-z", "color": "red"}
+    ]
+  }
+}
