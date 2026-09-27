@@ -34,7 +34,7 @@ elsewhere, so check in DockHand's role editor which permission gates that area, 
 
 Each profile includes everything in the profiles above it.
 
-**`read-only`** (50 read tools)
+**`read-only`** (51 read tools)
 
 | Permission | Needed for | Source |
 |---|---|---|
@@ -46,6 +46,7 @@ Each profile includes everything in the profiles above it.
 | `registries:view` | Registry browsing tools | spec |
 | `settings:view` | `dockhand_get_settings` (scanner part), database health | spec |
 | `stacks:remove` | `dockhand_preview_stack_delete` only (DockHand gates the preview with the delete permission). If you'd rather not grant it, leave it out and set `DOCKHAND_MCP_DISABLE_TOOLS=dockhand_preview_stack_delete`. | spec |
+| `containers:view`, `stacks:view` | `dockhand_list_tags` (the tag catalogue and container tags need `containers:view`, stack tags `stacks:view`) | spec |
 | `containers:view`, `containers:logs` | Container list, inspect, logs, stats, top, sizes, generated compose, pending updates | **verify** |
 | images (view) | Image list, history, scan results, vulnerabilities | **verify** |
 | networks (view) | Network list and inspect | **verify** |

@@ -230,6 +230,14 @@ CASES: dict[str, tuple[dict[str, Any], list[Route]]] = {
         [("GET", "/api/git/repositories", fx("git", "repositories"))],
     ),
     "dockhand_list_git_stacks": ({}, [("GET", "/api/git/stacks", fx("git", "stacks"))]),
+    "dockhand_list_tags": (
+        E,
+        [
+            ("GET", "/api/tags", fx("tags", "catalogue")),
+            ("GET", "/api/container-tags", fx("tags", "containers")),
+            ("GET", "/api/stack-tags", fx("tags", "stacks")),
+        ],
+    ),
 }
 
 # Phase 1 tools with their own tests (test_health_tool.py, test_operations.py).
