@@ -1286,3 +1286,113 @@ No server code changed.
 - Linking the archive references to the private repository (readers can't open them).
 
 **Deferred / follow-ups:** none.
+
+### 2026-09-27 — DockHand API 1.0.49 (PR #4, branch chore/dockhand-api-1.0.49)
+**Decision:** DockHand API 1.0.49 is the reference spec (`docs/api/dockhand-openapi-1.0.49.json`, git-ignored). The generator's default, `CLAUDE.md`, `docs/api/README.md`, D-012's pinned value, the README's tested version, DOCKHAND-SETUP's Perm-column source and the bug-report placeholder now say 1.0.49. `docs/api/ENDPOINT-MAP.md` is regenerated from it. No existing operation changed tier, no tool was added, and no `src/` code changed. Mentions of 1.0.46 that record what was observed live at the time (ARCHITECTURE, TOOLS status notes, code comments, earlier entries) are history and stay.
+
+**Spec diff (1.0.46 → 1.0.49), done in this session from the two documents:** 375 → 387 operations, 261 → 269 paths; 12 added, 0 removed, 38 changed. No change to `components`; the top level differs only in `info.version` and three new tag names (`tags`, `container-tags`, `stack-tags`).
+- *Added (12):* `POST /api/containers/{id}/exec/run` (body `cmd`, `user`, `workingDir`; `envId` required), `POST /api/containers/{id}/files/chown` (body `path`, `owner`, `recursive`; `env` required), `GET`/`POST /api/tags`, `PUT`/`DELETE /api/tags/{id}`, `GET /api/stack-tags`, `GET /api/container-tags`, `GET`/`PUT /api/container-tags/{name}`, `GET`/`PUT /api/stacks/{name}/tags`. `env` is optional on every tag operation that takes it.
+- *`env` now required (33 existing operations, not the 34 the prompt said):* 32 container operations with `env` and `POST /api/containers/{id}/exec` with `envId`: every `/api/containers/{id}/*` operation, plus `GET /api/containers/stats`, `GET /api/containers/sizes`, `GET`/`POST /api/containers/check-updates`, `POST /api/containers/batch-update` and `batch-update-stream`. The description changed from "omit for the local/default Docker host" to "the environment ID the container lives in". The `pending-updates` operations and `GET /api/system/disk` already required it in 1.0.46. Still optional: `GET`/`POST /api/containers`, `GET /api/containers/stats/stream`, `POST /api/containers/{id}/update-runtime`. With the two new container operations, 40 operations now require an environment parameter.
+- *Other changes (5):* `files/create` and `files/upload` gained an `owner` body field (and `files/create` a changed response); `POST /api/environments/test`'s response gained `showMemoryWarning`; the two `icons/selfhst` operations changed descriptions and responses; `POST /api/settings/general` and `PUT /api/profile/preferences` changed request bodies (`editorTheme`).
+- *Operations our tools call:* the only change to any of them is `env` becoming required. No other parameter, body or response of a called operation changed.
+
+**Tiers for the new operations** (`scripts/gen-endpoint-map.py`; `test_endpoint_map.py` pins each):
+- `exec/run` → **excluded**, by the existing `containers` rule (`/exec` in the path). It runs a command in a container: D-007's in-container execution family.
+- `files/chown` → **excluded**, by the same rule (`/files`): the tier of `files/chmod`, which the map has as excluded.
+- `GET /api/tags`, `GET /api/stack-tags`, `GET /api/container-tags`, `GET /api/container-tags/{name}` → **read**; `PUT /api/container-tags/{name}` → **operator**. `GET`/`PUT /api/stacks/{name}/tags` were already **read**/**operator** under the `stacks` rule; the container assignment write follows it (the spec gives it `containers:edit`, as the stack one has `stacks:edit`).
+- `POST /api/tags`, `PUT`/`DELETE /api/tags/{id}` → **admin**: the global catalogue is DockHand's own configuration, like settings writes, and a delete strips the tag from every container and stack. Admin is not exposed in v1.
+- A tension, recorded for the maintainer: environment `labels` (the closest existing metadata) are wholly excluded as "UI cosmetics" (SECURITY §4), reads included. The prompt asked for tag reads at `read`, and the labels exclusion predates any use case, so tags were not made to match. Issue #3 asks whether tag reads are worth tools.
+
+**`env` audit:** every call path that reaches one of the 40 operations: 20 tools (12 read, 7 operator, 1 destructive) using 21 of those operations. All take the environment from `resolve_env` (`int`), or, in `dockhand_remove_container`'s execute step, the value its preview already checked with `scoped()`. Every one sends it. `resolve_container`, `container_state`, `startup.py`'s shared-daemon check and `scripts/smoke.py` call only `GET /api/containers` or stack endpoints, where `env` stays optional (they send it anyway). **No path needed a fix.** `tests/test_env_required.py` runs each of the 20 tools through its tier's happy-path case and asserts that every request to an env-required operation carries `env=7` (or `envId`), and that each declared one is actually reached. It also checks its list of 40 against the local spec when present, and pins the set of affected tools, so a new one is noticed. These tests pass against the old code too: they are regression guards. A mutation check (dropping `env` from `dockhand_get_container_processes`) made the matching case fail.
+
+**Live** (DockHand at the 1.0.49 level: its database schema reports `0016_add_tags`). Container reads in the test environment, through the project's own HTTP client, read-only:
+- `GET /api/containers/{id}` without `env` → **HTTP 500** `{"error": "Failed to inspect container"}`; with `env` → 200 with the inspect body.
+- `GET /api/containers/{id}/logs` without `env` → **HTTP 500** `{"error": "Failed to get container logs", "details": "No environment specified"}`; with `env` → 200 `{logs}`.
+- `GET /api/containers/stats` without `env` → **HTTP 200 `[]`**. Not a rejection: a caller that omitted `env` would silently see no containers. `GET /api/containers` (still optional) without `env` also answers `[]`.
+- DockHand rejects with a 5xx, not a 4xx, so an omission would surface as `dockhand_http_error` with `dockhand_status: 500`. Our tools never send these calls without `env`; through them the same reads succeed (`read.json` 53/53).
+
+**Tests:** failing commits `4ea007b` (8 failed against the 1.0.46 map: the classification test, chmod/chown, and the six exec/run and chown unreachability cases) and `52a00cc` (2 failed: `test_map_parses_completely` and the classification test, because the regenerated map had 8 `review` rows). New `test_map_is_generated_from_the_reference_spec` regenerates the map from the local spec and compares it with the committed one; it skips where the spec is absent (CI).
+
+**Versions:** `uv lock --upgrade` changed nothing (52 packages): `mcp` 2.2.0, `mcp-types` 2.2.0, `httpx` 0.28.1, `httpx2` 2.13.1, `pydantic` 2.13.5, `pydantic-settings` 2.15.0, `pyyaml` 6.0.3, `starlette` 1.7.0, `uvicorn` 0.54.0, `anyio` 4.15.1, `certifi` 2026.7.22; dev `ruff` 0.16.9, `mypy` 2.3.1, `pytest` 9.1.1, `pytest-asyncio` 1.4.0, `respx` 0.23.1. python.org's newest stable release is 3.14.7 (3.15 is at rc2), so there is no Python bump. No dependency added.
+
+**Alternatives rejected:**
+- Tag catalogue writes at `operator` (they change DockHand's configuration, not a runtime resource) or `excluded` (permanent under D-007; the maintainer may want catalogue tools later).
+- Tag reads `excluded`, to match environment labels (the prompt asked for `read`; see the tension above).
+- A client-level guard that refuses an env-required operation without `env` (every path already sends it and the tests guard it; a new guard would be its own PR).
+- Rewriting the 1.0.46 mentions in history and live-observation notes.
+
+**Deferred / follow-ups:** issue #3 (read-tier tag tools). The `owner` field and the icon, preference and settings changes are out of scope.
+
+### 2026-09-27 — Fix #5: env guard in client (PR #6, branch fix/issue-5-env-guard)
+**Decision:** `client/dockhand.py` refuses, before anything is sent, a request to an operation whose environment query parameter DockHand requires when that parameter is missing, `None` or blank. The check is in `DockhandClient._admit`, which every request path already calls (`_request`, so `get_json`/`post_json`/`put_json`/`delete_json`/`raw`; `stream_sse`; `probe_status`, which sends no query and so is refused for any such operation), after the declared-endpoint and read-only-phase checks and before the recorder. No tool's inputs or outputs changed, and no tool needed a fix: every existing call already sends the parameter (the full suite passed unchanged apart from two low-level client tests, below).
+
+**Where the list lives:** `src/dockhand_mcp/client/env_required.py`, a committed module holding `ENV_REQUIRED: Mapping[(METHOD, path template), parameter name]` as a read-only mapping. It is generated from the spec by the existing generator, `scripts/gen-endpoint-map.py --env-required <spec> > src/dockhand_mcp/client/env_required.py`, which selects every operation with a `required` query parameter named `env` or `envId`. The spec is git-ignored and not in the image, so the runtime reads the committed module, never the spec. `docs/api/README.md` gives both regeneration commands.
+- *Spec check:* `test_endpoint_map.py::test_env_required_is_generated_from_the_reference_spec` regenerates the module from the local spec and compares it with the committed file, following the map test's pattern: it skips where the spec is absent (CI). In CI, `test_env_required.py::test_list_matches_the_clients_generated_list` still compares the module with that file's hand-kept list of 40, which its existing test checks against the spec when present.
+- *Count in 1.0.49:* **40 operations** (verified from the spec in this session): 38 with `env`, 2 with `envId` (`POST /api/containers/{id}/exec` and `…/exec/run`). That is the 33 container operations made required in 1.0.49, the 2 container operations added in 1.0.49, and the 5 that already required it (`GET`/`DELETE /api/containers/pending-updates`, `GET /api/system/disk`, `GET /api/preferences/favorites`, `GET /api/preferences/favorite-groups`). The spec has no path-level or `$ref` parameters, so operation-level parameters are the whole picture. Excluded operations are in the list too: they are never called, and refusing them costs nothing.
+
+**Error code:** `validation_error`, via `MissingEnvironmentError(DockhandError)` with `status=None` and `sent=False`, message `"<METHOD> <template> requires the <param> query parameter; the request was not sent"`. It is the existing code for a request refused before it reaches DockHand (compose and `.env` guardrails, name resolution), and a `DockhandError` makes tools answer with the error envelope rather than an internal error, while `sent=False` keeps content-write read-back from running. `dockhand_http_error` would claim an HTTP failure that never happened; `guardrail_blocked` is for policy on content; `UndeclaredEndpointError` (a `RuntimeError`, surfaced as an MCP internal error) was considered, but the prompt asked for a code from the closed set, and the envelope set is unchanged.
+
+**Tests:** failing commit `9c51519` (28 failed there): `tests/test_env_guard.py` refuses, with zero respx calls and nothing recorded, an env-required read (`GET …/inspect`), write (`POST …/restart`), `GET /api/containers/stats` (the `200 []` case) and `DELETE /api/containers/{id}`, plus `raw` and `stream_sse`, each with the parameter absent, `None`, empty and blank (24); exec with `env` instead of `envId`; `probe_status`; the generated-list test; and the module-versus-list test. With the parameter the same calls are sent as before, and `GET /api/environments` and `GET /api/containers` (still optional there) are unaffected; those pass at both commits. `test_client.py`'s `test_post_is_never_retried` and `test_recorder_sees_method_and_template` called container operations without `env` and now send `env=7`; what each asserts is unchanged.
+
+**Versions:** `uv lock --upgrade` changed nothing (52 packages): `mcp` 2.2.0, `mcp-types` 2.2.0, `httpx` 0.28.1, `httpx2` 2.13.1, `pydantic` 2.13.5, `pydantic-settings` 2.15.0, `pyyaml` 6.0.3, `starlette` 1.7.0, `uvicorn` 0.54.0, `anyio` 4.15.1, `certifi` 2026.7.22; dev `ruff` 0.16.9, `mypy` 2.3.1, `pytest` 9.1.1, `pytest-asyncio` 1.4.0, `respx` 0.23.1. python.org's newest stable release is still 3.14.7 (3.15 is a pre-release), so there is no Python bump. No dependency added.
+
+**Alternatives rejected:**
+- An `Env` column in `ENDPOINT-MAP.md`, parsed at runtime: `docs/` is not in the image, and parsing Markdown at startup is fragile. The module is the one generated source; the map is unchanged.
+- A hand-maintained list in `src/`: it would drift from the spec at the next adoption. The generator produces it, and the spec test catches a stale file.
+- Deriving the parameter from the tool's `environment_id` inside the client: it would hide a tool's omission instead of refusing it.
+- Refusing only the operations some tool declares: a future tool would then be the first to hit an unguarded one.
+
+**Deferred / follow-ups:** none.
+
+### 2026-09-27 — Fix #3: dockhand_list_tags (PR #7, branch feat/list-tags)
+**Decision:** One read-tier tool, `dockhand_list_tags`, answers "what's tagged X?" and lets a client pick containers or stacks by tag before acting on them. It reads `GET /api/tags` (the global catalogue), `GET /api/container-tags?env` and `GET /api/stack-tags?env`, and returns in the uniform envelope:
+- `tags`: the catalogue, `[{id, name, color}]`;
+- `containers` and `stacks`: `{name: [tag names]}` for the environment, with untagged resources omitted;
+- tag ids resolved to names through the catalogue; an id the catalogue lacks appears as `"#<id>"` and adds one warning listing the missing ids;
+- a per-environment answer that is not a JSON object is shown as `{}` with a warning, never as silently empty.
+
+`env` is always sent on both per-environment reads, although spec 1.0.49 marks it optional there (so the client's env guard from #5 does not enforce it). The tool is `Tier.READ` (registered in all three profiles), with `title`, `readOnlyHint: true`, a specialised `outputSchema`, and its output goes through the dispatcher's usual key-based and free-text redaction. It is **`experimental`** in `docs/TOOLS.md`: the per-environment reads have no 200 schema and live tag data was empty. Tag writes, tag filters on other tools and environment labels are unchanged (not exposed).
+
+**Maintainer decisions:**
+- *Tags versus environment labels (settles the tension in the "DockHand API 1.0.49" entry):* tag reads stay **read** and get this tool; environment labels stay **excluded**. Tags attach to workloads (containers, stacks) and help select them for an action; environment labels are cosmetic metadata on DockHand's own configuration. Future spec adoptions should classify similar metadata the same way: selection metadata on workloads is `read`, cosmetic metadata is `excluded`.
+- *Declared endpoints:* the prompt said the tool declares "exactly its three GET endpoints", which conflicts with the read-tier convention (F-09) that every environment-scoped tool takes an optional `environment_id` and declares `GET /api/environments` to resolve it. Asked in session; the maintainer chose F-09. The tool declares the three tag reads plus `GET /api/environments`, which is only called when `environment_id` is omitted and no default is configured. With `environment_id` given, exactly the three tag endpoints are called (tested).
+
+**Live structure** (read-only, through the project's own client; structure only, no values):
+- `GET /api/tags` → `{"tags": []}`: no tags defined.
+- `GET /api/container-tags?env` and `GET /api/stack-tags?env` → `{}` (an empty JSON object, not an array) in both environments the token sees. Without `env` both also answered `{}`.
+- This matches the spec's descriptions ("a JSON object mapping container/stack name to its array of tag ids"), so the output design stands. Nothing was created to populate them. The populated shapes in the tests are invented from those descriptions (`tests/fixtures/dockhand/tags/`, placeholder names `web-1`, `stack-a`, `tag-x`), each file saying so.
+
+**Tests:** failing commit `103e82d` (11 failed there): `tests/test_list_tags.py` (ids resolved to names with untagged resources omitted; the `#<id>` warning; an empty environment; `env` sent on both per-environment reads, also when defaulted; only the three tag endpoints called and exactly four declared; the tool in all three profiles; title, annotations and output schema) and the tool's happy-path, 403 and coverage cases in `tests/test_read_tools.py`. The read-tier catalogue snapshot gains the tool. `scripts/smoke-plans/read.json` gains a `dockhand_list_tags` step using `${env}`.
+
+**Docs:** `docs/TOOLS.md` row; README (97 tools, 51 read); `docs/DOCKHAND-SETUP.md` (51 read tools; `containers:view` and `stacks:view` for the tag reads, from the spec).
+
+**Versions:** `uv lock --upgrade` changed nothing (52 packages): `mcp` 2.2.0, `mcp-types` 2.2.0, `httpx` 0.28.1, `httpx2` 2.13.1, `pydantic` 2.13.5, `pydantic-settings` 2.15.0, `pyyaml` 6.0.3, `starlette` 1.7.0, `uvicorn` 0.54.0, `anyio` 4.15.1, `certifi` 2026.7.22; dev `ruff` 0.16.9, `mypy` 2.3.1, `pytest` 9.1.1, `pytest-asyncio` 1.4.0, `respx` 0.23.1. python.org's newest stable release is still 3.14.7, so there is no Python bump. No dependency added.
+
+**Alternatives rejected:**
+- A `tags` field or filter on `dockhand_list_containers` / `dockhand_list_stacks`: extra calls on every list, and two tools to change instead of one.
+- Per-resource tools over `GET /api/container-tags/{name}` and `GET /api/stacks/{name}/tags`: the per-environment maps answer the same questions in one call.
+- Making `environment_id` required so the tool declares only three endpoints (maintainer chose F-09, above).
+- Excluding tag reads to match environment labels (see the decision above).
+
+**Deferred / follow-ups:** confirm the populated per-environment shape against a DockHand with tags, then drop `experimental`. Tag writes stay unimplemented.
+
+### 2026-09-27 — Release v0.2.0 (PR #8, branch chore/release-0.2.0)
+**Decision:** Version 0.2.0 (`pyproject.toml`, `__version__`, `uv.lock`'s own entry). It ships the changes recorded since the v0.1.1 entry: DockHand API 1.0.49 as the reference spec (the endpoint map regenerated; the two new container operations `exec/run` and `files/chown` excluded; tag reads `read`, container-tag assignment `operator`, tag catalogue writes `admin`), the client-level guard that refuses a request to an operation whose environment parameter DockHand requires when that parameter is missing (#5), and the new read-tier tool `dockhand_list_tags` (#3, experimental). A new tool makes this a minor release. **Supported DockHand: 1.0.49.** OAuth resource-server mode is not part of this release: `docs/handoff/oauth-resource-server.md` remains a design only, and no `oauth` auth mode exists.
+
+No server code changed in this PR.
+
+**Release mechanics, unchanged from v0.1.1:** `release.yml` on the `v0.2.0` tag. `v0.1.1` is the previous tag, so `release-notes.py` takes the entries whose headings are in the ARCHIVE at `v0.2.0` and not at `v0.1.1`: the DockHand API 1.0.49 entry through this one. `CHANGELOG.md` gains a 0.2.0 section from `scripts/release-notes.py changelog --previous-archive <ARCHIVE at v0.1.1>`, with two hand edits for readability: a line after the heading, "Supported DockHand: 1.0.49.", and, in the #5 entry, the parenthesis pointing to test details "below" (which the CHANGELOG omits) dropped. The generated text is otherwise unedited.
+
+**Pre-release checks (local, on this branch):**
+- The full suite passes (1770 passed, 2 skipped).
+- Image built per platform with the release's build arguments: labels `version=0.2.0` and `source=https://github.com/tyler-rich/dockhand-mcp`. Under `ci`'s hardened-run flags it is `healthy`, `/healthz` answers `200 {"status":"ok"}`, and `/licenses/LICENSE` and `/licenses/NOTICE` match the repository's.
+- OSV-Scanner v2.6.0 (still the newest release; the Windows binary's SHA-256 matched the release's published checksum) on per-platform docker archives, judged by `scripts/osv-image-gate.py`: **linux/amd64 and linux/arm64 both pass, 0 blocking, 65 reported**, the same Debian trixie findings as v0.1.1. No exception added; `osv-scanner.toml` still holds `IgnoredVulns = []`.
+- Live, read-only profile, against the built container with both token files mounted read-only and named by the `*_FILE` variables: `read.json` 54/54 in both `auto` and `legacy`, including `dockhand_list_tags`.
+
+**Versions:** `uv lock --upgrade` changed nothing (52 packages): `mcp` 2.2.0, `mcp-types` 2.2.0, `httpx` 0.28.1, `httpx2` 2.13.1, `pydantic` 2.13.5, `pydantic-settings` 2.15.0, `pyyaml` 6.0.3, `starlette` 1.7.0, `uvicorn` 0.54.0, `anyio` 4.15.1, `certifi` 2026.7.22; dev `ruff` 0.16.9, `mypy` 2.3.1, `pytest` 9.1.1, `pytest-asyncio` 1.4.0, `respx` 0.23.1. python.org's newest stable release is still 3.14.7 (3.15 is a pre-release, planned for 2026-10-01), so there is no Python bump. Base image, uv and the release tooling (cosign v3.1.3, syft v1.52.0, OSV-Scanner v2.6.0) are unchanged. No dependency was added.
+
+**Alternatives rejected:**
+- A patch release (0.1.2): a new tool is new functionality, so semantic versioning calls for a minor bump.
+- Rewording the generated CHANGELOG entries: they read cleanly; only the supported-DockHand line is added.
+
+**Deferred / follow-ups:** none.

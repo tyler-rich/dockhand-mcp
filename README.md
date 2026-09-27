@@ -12,7 +12,7 @@ DockHand manages, through DockHand's REST API only, and never through the Docker
 everything DockHand can. dockhand-mcp exposes a curated, profile-gated subset of DockHand's API:
 the whole server is designed around what a prompt-injected model must *not* be able to do.
 
-**Status: early (v0.1.x).** Built and tested against DockHand's API 1.0.46. Before 1.0, tool
+**Status: early (v0.1.x).** Built and tested against DockHand's API 1.0.49. Before 1.0, tool
 names, arguments, results and configuration can change in a minor release; each release's notes
 list what changed, so pin the image by digest and read them before upgrading. Tools whose
 DockHand response shape is not documented are marked `experimental` in
@@ -135,11 +135,11 @@ Docker secret. [`deploy/.env.example`](deploy/.env.example) lists them all with 
 
 ## Tools
 
-96 tools in three tiers, each registered only in the profiles that include its tier:
+97 tools in three tiers, each registered only in the profiles that include its tier:
 
 | Tier | Profiles | Tools | Examples |
 |---|---|---|---|
-| read | `read-only`, `operator`, `admin` | 50 | environments, containers (list, inspect, logs, stats), stacks (list, compose, `.env`, deploy runs), images, volumes, networks, jobs, host and system, activity, audit (Enterprise), schedules, updates, vulnerabilities, registries, git |
+| read | `read-only`, `operator`, `admin` | 51 | environments, containers (list, inspect, logs, stats), stacks (list, compose, `.env`, deploy runs), images, volumes, networks, jobs, host and system, activity, audit (Enterprise), schedules, updates, vulnerabilities, registries, git, tags |
 | operator | `operator`, `admin` | 36 | container and stack lifecycle, compose and `.env` edits with read-back verification, create stack with guardrails, image pull, tag and scan, volumes, networks, schedules, git sync and deploy, batch start/stop/restart |
 | destructive | `admin` | 10 | remove container, image, volume or network; stack down and delete; prune; batch remove; run image prune now; clear activity log |
 

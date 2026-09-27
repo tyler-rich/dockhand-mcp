@@ -27,14 +27,14 @@ profile's user.
 
 The tables below are built from each tool's declared endpoints (`dockhand-mcp tools` prints them)
 and the **Perm** column of [`docs/api/ENDPOINT-MAP.md`](api/ENDPOINT-MAP.md), which records the
-permission strings DockHand's API document (v1.0.46) states for each endpoint. Many endpoints state
+permission strings DockHand's API document (v1.0.49) states for each endpoint. Many endpoints state
 none. Those rows say **verify**: the name given is the closest permission the document uses
 elsewhere, so check in DockHand's role editor which permission gates that area, and confirm with
 `dockhand-mcp check` (step 5) and a first call of the tools involved.
 
 Each profile includes everything in the profiles above it.
 
-**`read-only`** (50 read tools)
+**`read-only`** (51 read tools)
 
 | Permission | Needed for | Source |
 |---|---|---|
@@ -46,6 +46,7 @@ Each profile includes everything in the profiles above it.
 | `registries:view` | Registry browsing tools | spec |
 | `settings:view` | `dockhand_get_settings` (scanner part), database health | spec |
 | `stacks:remove` | `dockhand_preview_stack_delete` only (DockHand gates the preview with the delete permission). If you'd rather not grant it, leave it out and set `DOCKHAND_MCP_DISABLE_TOOLS=dockhand_preview_stack_delete`. | spec |
+| `containers:view`, `stacks:view` | `dockhand_list_tags` (the tag catalogue and container tags need `containers:view`, stack tags `stacks:view`) | spec |
 | `containers:view`, `containers:logs` | Container list, inspect, logs, stats, top, sizes, generated compose, pending updates | **verify** |
 | images (view) | Image list, history, scan results, vulnerabilities | **verify** |
 | networks (view) | Network list and inspect | **verify** |

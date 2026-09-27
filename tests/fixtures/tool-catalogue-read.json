@@ -843,6 +843,32 @@
     "output_schema_sha256": "eb67ee98693805d9e362d39aeec37668efb064da962c50f6c893fbfddd6f70a8"
   },
   {
+    "name": "dockhand_list_tags",
+    "title": "List tags",
+    "tier": "read",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "GET",
+        "/api/tags"
+      ],
+      [
+        "GET",
+        "/api/container-tags"
+      ],
+      [
+        "GET",
+        "/api/stack-tags"
+      ]
+    ],
+    "description": "List DockHand's tag catalogue (id, name, colour) and, for one environment, the tag names on each tagged container and stack.",
+    "input_schema_sha256": "202c44bd6de3c922e5feca5523be92d58ab90be4ce32840a787a7b31783c9ce8",
+    "output_schema_sha256": "e022fb4c672db4dedaa6fab720b7a9c116c4491e8e84ca4b3e4f74e247356473"
+  },
+  {
     "name": "dockhand_list_volumes",
     "title": "List volumes",
     "tier": "read",

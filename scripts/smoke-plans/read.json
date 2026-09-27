@@ -61,5 +61,7 @@
 
   {"tool": "dockhand_get_settings", "args": {"environment_id": "${env}"}, "expect": {"ok": true}},
   {"tool": "dockhand_list_git_repositories", "expect": {"ok": true}},
-  {"tool": "dockhand_list_git_stacks", "args": {"environment_id": "${env}"}, "expect": {"ok": true}}
+  {"tool": "dockhand_list_git_stacks", "args": {"environment_id": "${env}"}, "expect": {"ok": true}},
+
+  {"tool": "dockhand_list_tags", "args": {"environment_id": "${env}"}, "expect": {"ok": true}}
 ]

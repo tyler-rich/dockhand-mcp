@@ -1,0 +1,7 @@
+{
+  "_comment": "Invented, from the spec's description of GET /api/stack-tags: a JSON object mapping stack name to its array of tag ids (no 200 schema). Live DockHand 1.0.49 answered {} (nothing tagged). stack-b's empty list is invented too, to cover omission.",
+  "body": {
+    "stack-a": [1],
+    "stack-b": []
+  }
+}

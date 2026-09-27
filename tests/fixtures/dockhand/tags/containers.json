@@ -1,0 +1,8 @@
+{
+  "_comment": "Invented, from the spec's description of GET /api/container-tags: a JSON object mapping container name to its array of tag ids (no 200 schema). Live DockHand 1.0.49 answered {} (nothing tagged). db-1's empty list is invented too, to cover omission.",
+  "body": {
+    "web-1": [1, 2],
+    "worker-1": [3],
+    "db-1": []
+  }
+}
