@@ -98,6 +98,13 @@ def tier(tag: str, m: str, p: str) -> str:
         if m == "delete" or p.endswith("/down") or "relocate" in p:
             return "destructive"
         return "operator"
+    if tag in ("tags", "container-tags", "stack-tags"):
+        # 1.0.49. Reads are read. Assigning tags to a container or stack is operator, as the
+        # `stacks` rule already makes PUT /api/stacks/{name}/tags. The global catalog is DockHand's
+        # own configuration: admin, like settings writes.
+        if m == "get":
+            return "read"
+        return "admin" if tag == "tags" else "operator"
     if tag in ("images", "volumes", "networks"):
         if any(k in p for k in ("/export", "/load", "/push", "/browse")):
             return "excluded"

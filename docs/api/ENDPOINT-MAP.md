@@ -2,7 +2,7 @@
 
 Generated from the `/api/docs` OpenAPI 3.0.3 document by `scripts/gen-endpoint-map.py` (the JSON itself is not committed; see `docs/api/README.md`). Regenerate when the spec is refreshed; diff the result and record tier changes in `docs/ARCHIVE.md` §14.
 
-**Totals:** 269 paths, 387 operations. Tier counts: admin=17, destructive=24, excluded=178, operator=64, read=95, review=8, split=1
+**Totals:** 269 paths, 387 operations. Tier counts: admin=20, destructive=24, excluded=178, operator=65, read=99, split=1
 
 
 ## Tier legend (this is the security decision, not documentation)
@@ -149,9 +149,9 @@ Columns: **Async** = `job` (returns `{jobId}`; poll `GET /api/jobs/{id}`), `sse`
 
 | Method | Path | Tier | Public | Query params | Body fields | Async | Perm |
 |---|---|---|---|---|---|---|---|
-| `GET` | `/api/container-tags` | **review** |  | env |  |  | containers:view |
-| `GET` | `/api/container-tags/{name}` | **review** |  | env |  |  | containers:view |
-| `PUT` | `/api/container-tags/{name}` | **review** |  | env | tagIds |  | containers:edit |
+| `GET` | `/api/container-tags` | **read** |  | env |  |  | containers:view |
+| `GET` | `/api/container-tags/{name}` | **read** |  | env |  |  | containers:view |
+| `PUT` | `/api/container-tags/{name}` | **operator** |  | env | tagIds |  | containers:edit |
 
 ## `containers` (41 ops)
 
@@ -540,7 +540,7 @@ Columns: **Async** = `job` (returns `{jobId}`; poll `GET /api/jobs/{id}`), `sse`
 
 | Method | Path | Tier | Public | Query params | Body fields | Async | Perm |
 |---|---|---|---|---|---|---|---|
-| `GET` | `/api/stack-tags` | **review** |  | env |  |  | stacks:view |
+| `GET` | `/api/stack-tags` | **read** |  | env |  |  | stacks:view |
 
 ## `stacks` (35 ops)
 
@@ -596,10 +596,10 @@ Columns: **Async** = `job` (returns `{jobId}`; poll `GET /api/jobs/{id}`), `sse`
 
 | Method | Path | Tier | Public | Query params | Body fields | Async | Perm |
 |---|---|---|---|---|---|---|---|
-| `GET` | `/api/tags` | **review** |  |  |  |  | containers:view |
-| `POST` | `/api/tags` | **review** |  |  | name, color, icon |  |  |
-| `PUT` | `/api/tags/{id}` | **review** |  |  | name, color, icon |  |  |
-| `DELETE` | `/api/tags/{id}` | **review** |  |  |  |  |  |
+| `GET` | `/api/tags` | **read** |  |  |  |  | containers:view |
+| `POST` | `/api/tags` | **admin** |  |  | name, color, icon |  |  |
+| `PUT` | `/api/tags/{id}` | **admin** |  |  | name, color, icon |  |  |
+| `DELETE` | `/api/tags/{id}` | **admin** |  |  |  |  |  |
 
 ## `templates` (6 ops)
 
