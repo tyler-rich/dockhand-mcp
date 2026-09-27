@@ -4,6 +4,30 @@ Notable changes per release, generated from the decision log in [`docs/ARCHIVE.m
 by `scripts/release-notes.py changelog` (each entry's decision; the log has the reasoning).
 Versions follow [Semantic Versioning](https://semver.org/).
 
+## [0.2.0] — 2026-09-27
+
+Supported DockHand: 1.0.49.
+
+### 2026-09-27 — DockHand API 1.0.49 (PR #4, branch chore/dockhand-api-1.0.49)
+
+DockHand API 1.0.49 is the reference spec (`docs/api/dockhand-openapi-1.0.49.json`, git-ignored). The generator's default, `CLAUDE.md`, `docs/api/README.md`, D-012's pinned value, the README's tested version, DOCKHAND-SETUP's Perm-column source and the bug-report placeholder now say 1.0.49. `docs/api/ENDPOINT-MAP.md` is regenerated from it. No existing operation changed tier, no tool was added, and no `src/` code changed. Mentions of 1.0.46 that record what was observed live at the time (ARCHITECTURE, TOOLS status notes, code comments, earlier entries) are history and stay.
+
+### 2026-09-27 — Fix #5: env guard in client (PR #6, branch fix/issue-5-env-guard)
+
+`client/dockhand.py` refuses, before anything is sent, a request to an operation whose environment query parameter DockHand requires when that parameter is missing, `None` or blank. The check is in `DockhandClient._admit`, which every request path already calls (`_request`, so `get_json`/`post_json`/`put_json`/`delete_json`/`raw`; `stream_sse`; `probe_status`, which sends no query and so is refused for any such operation), after the declared-endpoint and read-only-phase checks and before the recorder. No tool's inputs or outputs changed, and no tool needed a fix: every existing call already sends the parameter.
+
+### 2026-09-27 — Fix #3: dockhand_list_tags (PR #7, branch feat/list-tags)
+
+One read-tier tool, `dockhand_list_tags`, answers "what's tagged X?" and lets a client pick containers or stacks by tag before acting on them. It reads `GET /api/tags` (the global catalogue), `GET /api/container-tags?env` and `GET /api/stack-tags?env`, and returns in the uniform envelope:
+- `tags`: the catalogue, `[{id, name, color}]`;
+- `containers` and `stacks`: `{name: [tag names]}` for the environment, with untagged resources omitted;
+- tag ids resolved to names through the catalogue; an id the catalogue lacks appears as `"#<id>"` and adds one warning listing the missing ids;
+- a per-environment answer that is not a JSON object is shown as `{}` with a warning, never as silently empty.
+
+### 2026-09-27 — Release v0.2.0 (PR #8, branch chore/release-0.2.0)
+
+Version 0.2.0 (`pyproject.toml`, `__version__`, `uv.lock`'s own entry). It ships the changes recorded since the v0.1.1 entry: DockHand API 1.0.49 as the reference spec (the endpoint map regenerated; the two new container operations `exec/run` and `files/chown` excluded; tag reads `read`, container-tag assignment `operator`, tag catalogue writes `admin`), the client-level guard that refuses a request to an operation whose environment parameter DockHand requires when that parameter is missing (#5), and the new read-tier tool `dockhand_list_tags` (#3, experimental). A new tool makes this a minor release. **Supported DockHand: 1.0.49.** OAuth resource-server mode is not part of this release: `docs/handoff/oauth-resource-server.md` remains a design only, and no `oauth` auth mode exists.
+
 ## [0.1.1] — 2026-09-26
 
 ### 2026-09-26 — Fix archive issue 17: 5xx after save; scan after pull (archive PR 25, branch fix/issue-17)
