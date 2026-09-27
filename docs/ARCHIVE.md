@@ -1323,7 +1323,7 @@ No server code changed.
 
 **Deferred / follow-ups:** issue #3 (read-tier tag tools). The `owner` field and the icon, preference and settings changes are out of scope.
 
-### 2026-09-27 — Fix #5: env guard in client (PR #TBD, branch fix/issue-5-env-guard)
+### 2026-09-27 — Fix #5: env guard in client (PR #6, branch fix/issue-5-env-guard)
 **Decision:** `client/dockhand.py` refuses, before anything is sent, a request to an operation whose environment query parameter DockHand requires when that parameter is missing, `None` or blank. The check is in `DockhandClient._admit`, which every request path already calls (`_request`, so `get_json`/`post_json`/`put_json`/`delete_json`/`raw`; `stream_sse`; `probe_status`, which sends no query and so is refused for any such operation), after the declared-endpoint and read-only-phase checks and before the recorder. No tool's inputs or outputs changed, and no tool needed a fix: every existing call already sends the parameter (the full suite passed unchanged apart from two low-level client tests, below).
 
 **Where the list lives:** `src/dockhand_mcp/client/env_required.py`, a committed module holding `ENV_REQUIRED: Mapping[(METHOD, path template), parameter name]` as a read-only mapping. It is generated from the spec by the existing generator, `scripts/gen-endpoint-map.py --env-required <spec> > src/dockhand_mcp/client/env_required.py`, which selects every operation with a `required` query parameter named `env` or `envId`. The spec is git-ignored and not in the image, so the runtime reads the committed module, never the spec. `docs/api/README.md` gives both regeneration commands.
