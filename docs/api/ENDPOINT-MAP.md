@@ -1,8 +1,8 @@
-# DockHand API endpoint map (v1.0.46)
+# DockHand API endpoint map (v1.0.49)
 
 Generated from the `/api/docs` OpenAPI 3.0.3 document by `scripts/gen-endpoint-map.py` (the JSON itself is not committed; see `docs/api/README.md`). Regenerate when the spec is refreshed; diff the result and record tier changes in `docs/ARCHIVE.md` §14.
 
-**Totals:** 261 paths, 375 operations. Tier counts: admin=17, destructive=24, excluded=176, operator=63, read=94, split=1
+**Totals:** 269 paths, 387 operations. Tier counts: admin=17, destructive=24, excluded=178, operator=64, read=95, review=8, split=1
 
 
 ## Tier legend (this is the security decision, not documentation)
@@ -145,7 +145,15 @@ Columns: **Async** = `job` (returns `{jobId}`; poll `GET /api/jobs/{id}`), `sse`
 | `POST` | `/api/container-icons/{name}` | **excluded** |  | env | icon, image |  | containers:edit |
 | `DELETE` | `/api/container-icons/{name}` | **excluded** |  | env |  |  | containers:edit |
 
-## `containers` (39 ops)
+## `container-tags` (3 ops)
+
+| Method | Path | Tier | Public | Query params | Body fields | Async | Perm |
+|---|---|---|---|---|---|---|---|
+| `GET` | `/api/container-tags` | **review** |  | env |  |  | containers:view |
+| `GET` | `/api/container-tags/{name}` | **review** |  | env |  |  | containers:view |
+| `PUT` | `/api/container-tags/{name}` | **review** |  | env | tagIds |  | containers:edit |
+
+## `containers` (41 ops)
 
 | Method | Path | Tier | Public | Query params | Body fields | Async | Perm |
 |---|---|---|---|---|---|---|---|
@@ -155,11 +163,13 @@ Columns: **Async** = `job` (returns `{jobId}`; poll `GET /api/jobs/{id}`), `sse`
 | `DELETE` | `/api/containers/{id}` | **destructive** |  | env, force |  |  |  |
 | `GET` | `/api/containers/{id}/compose` | **read** |  | env |  |  |  |
 | `POST` | `/api/containers/{id}/exec` | **excluded** |  | envId | shell, user |  |  |
+| `POST` | `/api/containers/{id}/exec/run` | **excluded** |  | envId | cmd, user, workingDir |  |  |
 | `GET` | `/api/containers/{id}/files` | **excluded** |  | env, path, simpleLs |  |  | containers:exec |
 | `POST` | `/api/containers/{id}/files/chmod` | **excluded** |  | env | path, mode, recursive |  |  |
+| `POST` | `/api/containers/{id}/files/chown` | **excluded** |  | env | path, owner, recursive |  |  |
 | `GET` | `/api/containers/{id}/files/content` | **excluded** |  | env, path |  |  | containers:exec |
 | `PUT` | `/api/containers/{id}/files/content` | **excluded** |  | env, path | content |  |  |
-| `POST` | `/api/containers/{id}/files/create` | **excluded** |  | env | path, type |  |  |
+| `POST` | `/api/containers/{id}/files/create` | **excluded** |  | env | path, type, owner |  |  |
 | `DELETE` | `/api/containers/{id}/files/delete` | **excluded** |  | env, path |  |  |  |
 | `GET` | `/api/containers/{id}/files/download` | **excluded** |  | env, path, format |  |  |  |
 | `POST` | `/api/containers/{id}/files/rename` | **excluded** |  | env | oldPath, newPath |  |  |
@@ -526,7 +536,13 @@ Columns: **Async** = `job` (returns `{jobId}`; poll `GET /api/jobs/{id}`), `sse`
 | `POST` | `/api/settings/semver` | **admin** |  |  | enabled, maxBump, matchFlavor, includePrerelease |  | settings:edit |
 | `GET` | `/api/settings/theme` | **excluded** | yes |  |  |  |  |
 
-## `stacks` (33 ops)
+## `stack-tags` (1 ops)
+
+| Method | Path | Tier | Public | Query params | Body fields | Async | Perm |
+|---|---|---|---|---|---|---|---|
+| `GET` | `/api/stack-tags` | **review** |  | env |  |  | stacks:view |
+
+## `stacks` (35 ops)
 
 | Method | Path | Tier | Public | Query params | Body fields | Async | Perm |
 |---|---|---|---|---|---|---|---|
@@ -555,6 +571,8 @@ Columns: **Async** = `job` (returns `{jobId}`; poll `GET /api/jobs/{id}`), `sse`
 | `POST` | `/api/stacks/{name}/restart` | **operator** |  | env, mode |  | sse | stacks:restart |
 | `POST` | `/api/stacks/{name}/start` | **operator** |  | env |  | job, sse, accept-json |  |
 | `POST` | `/api/stacks/{name}/stop` | **operator** |  | env |  | job, sse, accept-json |  |
+| `GET` | `/api/stacks/{name}/tags` | **read** |  | env |  |  | stacks:view |
+| `PUT` | `/api/stacks/{name}/tags` | **operator** |  | env | tagIds |  | stacks:edit |
 | `POST` | `/api/stacks/{name}/validate` | **read** |  | env | compose, existing, config, envVars |  |  |
 | `POST` | `/api/stacks/adopt` | **operator** |  |  | stacks, environmentId |  | stacks:create |
 | `GET` | `/api/stacks/base-path` | **read** |  | env |  |  |  |
@@ -573,6 +591,15 @@ Columns: **Async** = `job` (returns `{jobId}`; poll `GET /api/jobs/{id}`), `sse`
 | `GET` | `/api/system/files` | **excluded** |  | path |  |  |  |
 | `POST` | `/api/system/files` | **excluded** |  |  | path |  |  |
 | `GET` | `/api/system/files/content` | **excluded** |  | path |  |  |  |
+
+## `tags` (4 ops)
+
+| Method | Path | Tier | Public | Query params | Body fields | Async | Perm |
+|---|---|---|---|---|---|---|---|
+| `GET` | `/api/tags` | **review** |  |  |  |  | containers:view |
+| `POST` | `/api/tags` | **review** |  |  | name, color, icon |  |  |
+| `PUT` | `/api/tags/{id}` | **review** |  |  | name, color, icon |  |  |
+| `DELETE` | `/api/tags/{id}` | **review** |  |  |  |  |  |
 
 ## `templates` (6 ops)
 
