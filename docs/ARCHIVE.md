@@ -1344,7 +1344,7 @@ No server code changed.
 
 **Deferred / follow-ups:** none.
 
-### 2026-09-27 — Fix #3: dockhand_list_tags (PR #TBD, branch feat/list-tags)
+### 2026-09-27 — Fix #3: dockhand_list_tags (PR #7, branch feat/list-tags)
 **Decision:** One read-tier tool, `dockhand_list_tags`, answers "what's tagged X?" and lets a client pick containers or stacks by tag before acting on them. It reads `GET /api/tags` (the global catalogue), `GET /api/container-tags?env` and `GET /api/stack-tags?env`, and returns in the uniform envelope:
 - `tags`: the catalogue, `[{id, name, color}]`;
 - `containers` and `stacks`: `{name: [tag names]}` for the environment, with untagged resources omitted;
