@@ -1343,3 +1343,35 @@ No server code changed.
 - Refusing only the operations some tool declares: a future tool would then be the first to hit an unguarded one.
 
 **Deferred / follow-ups:** none.
+
+### 2026-09-27 — Fix #3: dockhand_list_tags (PR #TBD, branch feat/list-tags)
+**Decision:** One read-tier tool, `dockhand_list_tags`, answers "what's tagged X?" and lets a client pick containers or stacks by tag before acting on them. It reads `GET /api/tags` (the global catalogue), `GET /api/container-tags?env` and `GET /api/stack-tags?env`, and returns in the uniform envelope:
+- `tags`: the catalogue, `[{id, name, color}]`;
+- `containers` and `stacks`: `{name: [tag names]}` for the environment, with untagged resources omitted;
+- tag ids resolved to names through the catalogue; an id the catalogue lacks appears as `"#<id>"` and adds one warning listing the missing ids;
+- a per-environment answer that is not a JSON object is shown as `{}` with a warning, never as silently empty.
+
+`env` is always sent on both per-environment reads, although spec 1.0.49 marks it optional there (so the client's env guard from #5 does not enforce it). The tool is `Tier.READ` (registered in all three profiles), with `title`, `readOnlyHint: true`, a specialised `outputSchema`, and its output goes through the dispatcher's usual key-based and free-text redaction. It is **`experimental`** in `docs/TOOLS.md`: the per-environment reads have no 200 schema and live tag data was empty. Tag writes, tag filters on other tools and environment labels are unchanged (not exposed).
+
+**Maintainer decisions:**
+- *Tags versus environment labels (settles the tension in the "DockHand API 1.0.49" entry):* tag reads stay **read** and get this tool; environment labels stay **excluded**. Tags attach to workloads (containers, stacks) and help select them for an action; environment labels are cosmetic metadata on DockHand's own configuration. Future spec adoptions should classify similar metadata the same way: selection metadata on workloads is `read`, cosmetic metadata is `excluded`.
+- *Declared endpoints:* the prompt said the tool declares "exactly its three GET endpoints", which conflicts with the read-tier convention (F-09) that every environment-scoped tool takes an optional `environment_id` and declares `GET /api/environments` to resolve it. Asked in session; the maintainer chose F-09. The tool declares the three tag reads plus `GET /api/environments`, which is only called when `environment_id` is omitted and no default is configured. With `environment_id` given, exactly the three tag endpoints are called (tested).
+
+**Live structure** (read-only, through the project's own client; structure only, no values):
+- `GET /api/tags` → `{"tags": []}`: no tags defined.
+- `GET /api/container-tags?env` and `GET /api/stack-tags?env` → `{}` (an empty JSON object, not an array) in both environments the token sees. Without `env` both also answered `{}`.
+- This matches the spec's descriptions ("a JSON object mapping container/stack name to its array of tag ids"), so the output design stands. Nothing was created to populate them. The populated shapes in the tests are invented from those descriptions (`tests/fixtures/dockhand/tags/`, placeholder names `web-1`, `stack-a`, `tag-x`), each file saying so.
+
+**Tests:** failing commit `103e82d` (11 failed there): `tests/test_list_tags.py` (ids resolved to names with untagged resources omitted; the `#<id>` warning; an empty environment; `env` sent on both per-environment reads, also when defaulted; only the three tag endpoints called and exactly four declared; the tool in all three profiles; title, annotations and output schema) and the tool's happy-path, 403 and coverage cases in `tests/test_read_tools.py`. The read-tier catalogue snapshot gains the tool. `scripts/smoke-plans/read.json` gains a `dockhand_list_tags` step using `${env}`.
+
+**Docs:** `docs/TOOLS.md` row; README (97 tools, 51 read); `docs/DOCKHAND-SETUP.md` (51 read tools; `containers:view` and `stacks:view` for the tag reads, from the spec).
+
+**Versions:** `uv lock --upgrade` changed nothing (52 packages): `mcp` 2.2.0, `mcp-types` 2.2.0, `httpx` 0.28.1, `httpx2` 2.13.1, `pydantic` 2.13.5, `pydantic-settings` 2.15.0, `pyyaml` 6.0.3, `starlette` 1.7.0, `uvicorn` 0.54.0, `anyio` 4.15.1, `certifi` 2026.7.22; dev `ruff` 0.16.9, `mypy` 2.3.1, `pytest` 9.1.1, `pytest-asyncio` 1.4.0, `respx` 0.23.1. python.org's newest stable release is still 3.14.7, so there is no Python bump. No dependency added.
+
+**Alternatives rejected:**
+- A `tags` field or filter on `dockhand_list_containers` / `dockhand_list_stacks`: extra calls on every list, and two tools to change instead of one.
+- Per-resource tools over `GET /api/container-tags/{name}` and `GET /api/stacks/{name}/tags`: the per-environment maps answer the same questions in one call.
+- Making `environment_id` required so the tool declares only three endpoints (maintainer chose F-09, above).
+- Excluding tag reads to match environment labels (see the decision above).
+
+**Deferred / follow-ups:** confirm the populated per-environment shape against a DockHand with tags, then drop `experimental`. Tag writes stay unimplemented.
