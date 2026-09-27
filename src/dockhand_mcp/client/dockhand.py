@@ -6,6 +6,9 @@
 - Redirects are never followed: any 3xx is an `unexpected_redirect` error.
 - TLS verification is on unless DOCKHAND_TLS_INSECURE; DOCKHAND_CA_BUNDLE adds a private CA.
   Environment proxy and netrc settings are ignored, so requests go only to DOCKHAND_URL.
+- A request to an operation whose environment parameter the spec requires (`client/env_required.py`,
+  generated from the spec) is refused, before it is sent, when that parameter is missing or empty
+  (#5): DockHand answers some such requests with a 500 and others with an empty list.
 - GETs are retried on unreachable/5xx (3 attempts, jittered exponential backoff); nothing else is
   retried, and 401/403 never are.
 - One log line per call: method, path with query values stripped, status, milliseconds. Never
@@ -44,6 +47,7 @@ import httpx
 
 from dockhand_mcp import __version__
 from dockhand_mcp.client import errors
+from dockhand_mcp.client.env_required import ENV_REQUIRED
 from dockhand_mcp.client.errors import DockhandError
 from dockhand_mcp.client.redaction import current_redactor
 
@@ -74,6 +78,17 @@ _PLACEHOLDER: Final = re.compile(r"\{([A-Za-z_][A-Za-z0-9_]*)\}")
 
 class UndeclaredEndpointError(RuntimeError):
     """A tool tried to call an endpoint it did not declare at registration. A bug, not input."""
+
+
+class MissingEnvironmentError(DockhandError):
+    """A request to an env-required operation without its environment parameter; never sent."""
+
+    def __init__(self, method: str, template: str, param: str) -> None:
+        super().__init__(
+            None,
+            "validation_error",
+            f"{method} {template} requires the {param} query parameter; the request was not sent",
+        )
 
 
 # The endpoints the running tool declared; None outside a tool (internal checks, tests).
@@ -279,12 +294,15 @@ class DockhandClient:
 
     # --- plumbing -----------------------------------------------------------------------------
 
-    def _admit(self, method: str, template: str) -> None:
+    def _admit(self, method: str, template: str, query: Mapping[str, str]) -> None:
         declared = _declared.get()
         if declared is not None and (method, template) not in declared:
             raise UndeclaredEndpointError(f"{method} {template} is not declared by this tool")
         if method != "GET" and _read_only.get():
             raise UndeclaredEndpointError(f"{method} {template} is not allowed before approval")
+        param = ENV_REQUIRED.get((method, template))
+        if param is not None and not query.get(param, "").strip():
+            raise MissingEnvironmentError(method, template, param)
         if self._recorder is not None:
             self._recorder((method, template))
 
@@ -322,7 +340,7 @@ class DockhandClient:
     ) -> httpx.Response:
         path = _fill(template, path_params)
         query = _query(params)
-        self._admit(method, template)
+        self._admit(method, template, query)
         attempts = self._attempts if method == "GET" else 1
         headers = {"accept": accept} if accept else None
         request_timeout = (
@@ -485,7 +503,7 @@ class DockhandClient:
         """
         path = _fill(template, path_params)
         query = _query(params)
-        self._admit(method, template)
+        self._admit(method, template, query)
         request = self._http.build_request(
             method,
             path,
@@ -528,7 +546,7 @@ class DockhandClient:
     async def probe_status(self, method: str, template: str) -> int:
         """The HTTP status of a request whose body is discarded unread (edition probe)."""
         path = _fill(template, None)
-        self._admit(method, template)
+        self._admit(method, template, {})
         started = time.monotonic()
         status: int | None = None
         try:

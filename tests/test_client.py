@@ -9,7 +9,7 @@ import certifi
 import httpx
 import pytest
 import respx
-from conftest import DOCKHAND_TOKEN, DOCKHAND_URL, SetEnv, fake_dh_token
+from conftest import DOCKHAND_TOKEN, DOCKHAND_URL, ENV, SetEnv, fake_dh_token
 
 from dockhand_mcp.client.dockhand import (
     DockhandClient,
@@ -170,7 +170,11 @@ async def test_get_retries_unreachable(dockhand: respx.MockRouter, client: Dockh
 
 async def test_post_is_never_retried(dockhand: respx.MockRouter, client: DockhandClient) -> None:
     route = dockhand.post("/api/containers/abc/restart").respond(503)
-    err = await raises(client.post_json("/api/containers/{id}/restart", path_params={"id": "abc"}))
+    err = await raises(
+        client.post_json(
+            "/api/containers/{id}/restart", path_params={"id": "abc"}, params={"env": ENV}
+        )
+    )
     assert route.call_count == 1
     assert (err.code, err.status) == ("dockhand_http_error", 503)
 
@@ -280,8 +284,10 @@ async def test_recorder_sees_method_and_template(dockhand: respx.MockRouter) -> 
     client = DockhandClient(DOCKHAND_URL, token=DOCKHAND_TOKEN, recorder=calls.append)
     dockhand.get("/api/containers/abc").respond(200, json={})
     dockhand.post("/api/containers/abc/start").respond(200, json={})
-    await client.get_json("/api/containers/{id}", path_params={"id": "abc"})
-    await client.post_json("/api/containers/{id}/start", path_params={"id": "abc"})
+    await client.get_json("/api/containers/{id}", path_params={"id": "abc"}, params={"env": ENV})
+    await client.post_json(
+        "/api/containers/{id}/start", path_params={"id": "abc"}, params={"env": ENV}
+    )
     assert calls == [("GET", "/api/containers/{id}"), ("POST", "/api/containers/{id}/start")]
 
 
