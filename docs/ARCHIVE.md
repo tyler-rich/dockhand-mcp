@@ -1375,3 +1375,24 @@ No server code changed.
 - Excluding tag reads to match environment labels (see the decision above).
 
 **Deferred / follow-ups:** confirm the populated per-environment shape against a DockHand with tags, then drop `experimental`. Tag writes stay unimplemented.
+
+### 2026-09-27 — Release v0.2.0 (PR #8, branch chore/release-0.2.0)
+**Decision:** Version 0.2.0 (`pyproject.toml`, `__version__`, `uv.lock`'s own entry). It ships the changes recorded since the v0.1.1 entry: DockHand API 1.0.49 as the reference spec (the endpoint map regenerated; the two new container operations `exec/run` and `files/chown` excluded; tag reads `read`, container-tag assignment `operator`, tag catalogue writes `admin`), the client-level guard that refuses a request to an operation whose environment parameter DockHand requires when that parameter is missing (#5), and the new read-tier tool `dockhand_list_tags` (#3, experimental). A new tool makes this a minor release. **Supported DockHand: 1.0.49.** OAuth resource-server mode is not part of this release: `docs/handoff/oauth-resource-server.md` remains a design only, and no `oauth` auth mode exists.
+
+No server code changed in this PR.
+
+**Release mechanics, unchanged from v0.1.1:** `release.yml` on the `v0.2.0` tag. `v0.1.1` is the previous tag, so `release-notes.py` takes the entries whose headings are in the ARCHIVE at `v0.2.0` and not at `v0.1.1`: the DockHand API 1.0.49 entry through this one. `CHANGELOG.md` gains a 0.2.0 section from `scripts/release-notes.py changelog --previous-archive <ARCHIVE at v0.1.1>`, with two hand edits for readability: a line after the heading, "Supported DockHand: 1.0.49.", and, in the #5 entry, the parenthesis pointing to test details "below" (which the CHANGELOG omits) dropped. The generated text is otherwise unedited.
+
+**Pre-release checks (local, on this branch):**
+- The full suite passes (1770 passed, 2 skipped).
+- Image built per platform with the release's build arguments: labels `version=0.2.0` and `source=https://github.com/tyler-rich/dockhand-mcp`. Under `ci`'s hardened-run flags it is `healthy`, `/healthz` answers `200 {"status":"ok"}`, and `/licenses/LICENSE` and `/licenses/NOTICE` match the repository's.
+- OSV-Scanner v2.6.0 (still the newest release; the Windows binary's SHA-256 matched the release's published checksum) on per-platform docker archives, judged by `scripts/osv-image-gate.py`: **linux/amd64 and linux/arm64 both pass, 0 blocking, 65 reported**, the same Debian trixie findings as v0.1.1. No exception added; `osv-scanner.toml` still holds `IgnoredVulns = []`.
+- Live, read-only profile, against the built container with both token files mounted read-only and named by the `*_FILE` variables: `read.json` 54/54 in both `auto` and `legacy`, including `dockhand_list_tags`.
+
+**Versions:** `uv lock --upgrade` changed nothing (52 packages): `mcp` 2.2.0, `mcp-types` 2.2.0, `httpx` 0.28.1, `httpx2` 2.13.1, `pydantic` 2.13.5, `pydantic-settings` 2.15.0, `pyyaml` 6.0.3, `starlette` 1.7.0, `uvicorn` 0.54.0, `anyio` 4.15.1, `certifi` 2026.7.22; dev `ruff` 0.16.9, `mypy` 2.3.1, `pytest` 9.1.1, `pytest-asyncio` 1.4.0, `respx` 0.23.1. python.org's newest stable release is still 3.14.7 (3.15 is a pre-release, planned for 2026-10-01), so there is no Python bump. Base image, uv and the release tooling (cosign v3.1.3, syft v1.52.0, OSV-Scanner v2.6.0) are unchanged. No dependency was added.
+
+**Alternatives rejected:**
+- A patch release (0.1.2): a new tool is new functionality, so semantic versioning calls for a minor bump.
+- Rewording the generated CHANGELOG entries: they read cleanly; only the supported-DockHand line is added.
+
+**Deferred / follow-ups:** none.
