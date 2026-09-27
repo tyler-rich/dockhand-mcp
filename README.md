@@ -12,7 +12,7 @@ DockHand manages, through DockHand's REST API only, and never through the Docker
 everything DockHand can. dockhand-mcp exposes a curated, profile-gated subset of DockHand's API:
 the whole server is designed around what a prompt-injected model must *not* be able to do.
 
-**Status: early (v0.1.x).** Built and tested against DockHand's API 1.0.46. Before 1.0, tool
+**Status: early (v0.1.x).** Built and tested against DockHand's API 1.0.49. Before 1.0, tool
 names, arguments, results and configuration can change in a minor release; each release's notes
 list what changed, so pin the image by digest and read them before upgrading. Tools whose
 DockHand response shape is not documented are marked `experimental` in

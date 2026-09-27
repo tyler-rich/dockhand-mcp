@@ -4,6 +4,7 @@
 Passes vacuously until tools exist; it gates S1-S3b.
 """
 
+import importlib.util
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -11,9 +12,12 @@ from pathlib import Path
 import pytest
 
 import dockhand_mcp.tools
-from dockhand_mcp.tools.registry import REGISTRY, RegisteredTool, Tier
+from dockhand_mcp.tools.registry import REGISTRY, Profile, RegisteredTool, Tier
 
-ENDPOINT_MAP = Path(__file__).resolve().parents[1] / "docs" / "api" / "ENDPOINT-MAP.md"
+ROOT = Path(__file__).resolve().parents[1]
+ENDPOINT_MAP = ROOT / "docs" / "api" / "ENDPOINT-MAP.md"
+REFERENCE_SPEC = ROOT / "docs" / "api" / "dockhand-openapi-1.0.49.json"
+GENERATOR = ROOT / "scripts" / "gen-endpoint-map.py"
 ROW = re.compile(r"^\| `(?P<method>[A-Z]+)` \| `(?P<path>[^`]+)` \| \*\*(?P<tier>[a-z]+)\*\* \|")
 MAP_TIERS = {"read", "operator", "destructive", "admin", "split", "excluded"}
 
@@ -60,6 +64,18 @@ def test_map_parses_completely(emap: dict[tuple[str, str], str]) -> None:
     assert set(emap.values()) <= MAP_TIERS
 
 
+def test_map_is_generated_from_the_reference_spec(capsys: pytest.CaptureFixture[str]) -> None:
+    """The committed map is the generator's output for the local, git-ignored reference spec."""
+    if not REFERENCE_SPEC.exists():
+        pytest.skip(f"{REFERENCE_SPEC.name} is not present (git-ignored)")
+    loader = importlib.util.spec_from_file_location("gen_endpoint_map", GENERATOR)
+    assert loader is not None and loader.loader is not None
+    generator = importlib.util.module_from_spec(loader)
+    loader.loader.exec_module(generator)
+    generator.main(str(REFERENCE_SPEC))
+    assert capsys.readouterr().out == ENDPOINT_MAP.read_text(encoding="utf-8")
+
+
 def test_registered_tools_respect_the_map(emap: dict[tuple[str, str], str]) -> None:
     assert dockhand_mcp.tools  # imported so every tool module has registered
     problems = [v for tool in REGISTRY.all() for v in violations(tool, emap)]
@@ -102,3 +118,46 @@ def test_checker_rejects_admin_endpoints(emap: dict[tuple[str, str], str]) -> No
     admin = next(k for k, v in emap.items() if v == "admin")
     for tier in (Tier.READ, Tier.OPERATOR, Tier.DESTRUCTIVE):
         assert violations(_entry(tier, admin), emap) != []
+
+
+# The operations DockHand 1.0.49 added, with the tier each was given (ARCHIVE §14, 1.0.49).
+NEW_IN_1_0_49: dict[tuple[str, str], str] = {
+    ("POST", "/api/containers/{id}/exec/run"): "excluded",
+    ("POST", "/api/containers/{id}/files/chown"): "excluded",
+    ("GET", "/api/tags"): "read",
+    ("POST", "/api/tags"): "admin",
+    ("PUT", "/api/tags/{id}"): "admin",
+    ("DELETE", "/api/tags/{id}"): "admin",
+    ("GET", "/api/stack-tags"): "read",
+    ("GET", "/api/container-tags"): "read",
+    ("GET", "/api/container-tags/{name}"): "read",
+    ("PUT", "/api/container-tags/{name}"): "operator",
+    ("GET", "/api/stacks/{name}/tags"): "read",
+    ("PUT", "/api/stacks/{name}/tags"): "operator",
+}
+EXEC_AND_CHOWN = (
+    ("POST", "/api/containers/{id}/exec/run"),
+    ("POST", "/api/containers/{id}/files/chown"),
+)
+
+
+def test_operations_new_in_1_0_49_are_classified(emap: dict[tuple[str, str], str]) -> None:
+    assert {k: emap.get(k) for k in NEW_IN_1_0_49} == NEW_IN_1_0_49
+
+
+def test_chown_has_the_tier_of_chmod(emap: dict[tuple[str, str], str]) -> None:
+    assert emap[("POST", "/api/containers/{id}/files/chmod")] == "excluded"
+    assert emap[("POST", "/api/containers/{id}/files/chown")] == "excluded"
+
+
+@pytest.mark.parametrize("profile", list(Profile))
+@pytest.mark.parametrize("endpoint", EXEC_AND_CHOWN)
+def test_exec_run_and_chown_are_unreachable(
+    emap: dict[tuple[str, str], str], profile: Profile, endpoint: tuple[str, str]
+) -> None:
+    assert emap.get(endpoint) == "excluded"
+    for tool in REGISTRY.tools_for_profile(profile):
+        assert endpoint not in tool.endpoints, tool.name
+    # No tool tier may declare it, so a tool that tried would fail registration's map check.
+    for tier in Tier:
+        assert violations(_entry(tier, endpoint), emap) != []

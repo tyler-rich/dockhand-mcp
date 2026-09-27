@@ -4,10 +4,10 @@
 
 The OpenAPI document (GET /api/docs) is NOT committed to this repository (docs/api/*.json is
 git-ignored); the maintainer attaches it to the Claude Code sessions that need it, and it is saved
-locally as docs/api/dockhand-openapi-1.0.46.json for the duration of the work.
+locally as docs/api/dockhand-openapi-1.0.49.json for the duration of the work.
 
 Usage:
-    python3 scripts/gen-endpoint-map.py docs/api/dockhand-openapi-1.0.46.json > docs/api/ENDPOINT-MAP.md
+    python3 scripts/gen-endpoint-map.py docs/api/dockhand-openapi-1.0.49.json > docs/api/ENDPOINT-MAP.md
 
 DockHand's own endpoint summaries and descriptions are not copied into the map: they are text
 from DockHand's source, which is licensed BUSL-1.1, not Apache-2.0 (ARCHIVE §14, public launch).
@@ -98,6 +98,13 @@ def tier(tag: str, m: str, p: str) -> str:
         if m == "delete" or p.endswith("/down") or "relocate" in p:
             return "destructive"
         return "operator"
+    if tag in ("tags", "container-tags", "stack-tags"):
+        # 1.0.49. Reads are read. Assigning tags to a container or stack is operator, as the
+        # `stacks` rule already makes PUT /api/stacks/{name}/tags. The global catalog is DockHand's
+        # own configuration: admin, like settings writes.
+        if m == "get":
+            return "read"
+        return "admin" if tag == "tags" else "operator"
     if tag in ("images", "volumes", "networks"):
         if any(k in p for k in ("/export", "/load", "/push", "/browse")):
             return "excluded"
@@ -247,4 +254,4 @@ Columns: **Async** = `job` (returns `{jobId}`; poll `GET /api/jobs/{id}`), `sse`
 
 
 if __name__ == "__main__":
-    main(sys.argv[1] if len(sys.argv) > 1 else "docs/api/dockhand-openapi-1.0.46.json")
+    main(sys.argv[1] if len(sys.argv) > 1 else "docs/api/dockhand-openapi-1.0.49.json")

@@ -11,7 +11,7 @@ You are working on **dockhand-mcp**, a security-first MCP server that exposes a 
 5. `docs/ARCHIVE.md` §14 — **all** entries: what previous sessions decided and why.
 6. The session prompt you were given (pasted as the first message), and any handoff doc it names.
 
-The **source of truth for DockHand's API is `docs/api/dockhand-openapi-1.0.46.json`** (the raw `/api/docs` document). It is git-ignored and never committed; depending on the session it is either attached to your first message or already present at that path. If you need it and have neither, STOP and ask for it. Not the manual, not the reference implementation, not this file's paraphrases. When the prompt, an issue, or your own assumption disagrees with the spec, the spec wins — and if the spec looks wrong or ambiguous, STOP and ask.
+The **source of truth for DockHand's API is `docs/api/dockhand-openapi-1.0.49.json`** (the raw `/api/docs` document). It is git-ignored and never committed; depending on the session it is either attached to your first message or already present at that path. If you need it and have neither, STOP and ask for it. Not the manual, not the reference implementation, not this file's paraphrases. When the prompt, an issue, or your own assumption disagrees with the spec, the spec wins — and if the spec looks wrong or ambiguous, STOP and ask.
 
 ## Hard rules (these are not preferences)
 
