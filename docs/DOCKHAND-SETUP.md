@@ -27,7 +27,7 @@ profile's user.
 
 The tables below are built from each tool's declared endpoints (`dockhand-mcp tools` prints them)
 and the **Perm** column of [`docs/api/ENDPOINT-MAP.md`](api/ENDPOINT-MAP.md), which records the
-permission strings DockHand's API document (v1.0.46) states for each endpoint. Many endpoints state
+permission strings DockHand's API document (v1.0.49) states for each endpoint. Many endpoints state
 none. Those rows say **verify**: the name given is the closest permission the document uses
 elsewhere, so check in DockHand's role editor which permission gates that area, and confirm with
 `dockhand-mcp check` (step 5) and a first call of the tools involved.
