@@ -105,6 +105,13 @@ def test_list_matches_the_reference_spec() -> None:
     assert found == ENV_REQUIRED
 
 
+def test_list_matches_the_clients_generated_list() -> None:
+    """The client's guard (#5) refuses exactly these operations without the parameter."""
+    from dockhand_mcp.client import env_required
+
+    assert dict(env_required.ENV_REQUIRED) == ENV_REQUIRED
+
+
 def test_the_container_endpoints_tools_use_are_covered() -> None:
     """The tools this file exercises, so a new one cannot slip past unnoticed."""
     assert {name for name, _ in AFFECTED} == {
