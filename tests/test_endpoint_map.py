@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 import dockhand_mcp.tools
-from dockhand_mcp.tools.registry import REGISTRY, RegisteredTool, Tier
+from dockhand_mcp.tools.registry import REGISTRY, Profile, RegisteredTool, Tier
 
 ENDPOINT_MAP = Path(__file__).resolve().parents[1] / "docs" / "api" / "ENDPOINT-MAP.md"
 ROW = re.compile(r"^\| `(?P<method>[A-Z]+)` \| `(?P<path>[^`]+)` \| \*\*(?P<tier>[a-z]+)\*\* \|")
@@ -102,3 +102,46 @@ def test_checker_rejects_admin_endpoints(emap: dict[tuple[str, str], str]) -> No
     admin = next(k for k, v in emap.items() if v == "admin")
     for tier in (Tier.READ, Tier.OPERATOR, Tier.DESTRUCTIVE):
         assert violations(_entry(tier, admin), emap) != []
+
+
+# The operations DockHand 1.0.49 added, with the tier each was given (ARCHIVE §14, 1.0.49).
+NEW_IN_1_0_49: dict[tuple[str, str], str] = {
+    ("POST", "/api/containers/{id}/exec/run"): "excluded",
+    ("POST", "/api/containers/{id}/files/chown"): "excluded",
+    ("GET", "/api/tags"): "read",
+    ("POST", "/api/tags"): "admin",
+    ("PUT", "/api/tags/{id}"): "admin",
+    ("DELETE", "/api/tags/{id}"): "admin",
+    ("GET", "/api/stack-tags"): "read",
+    ("GET", "/api/container-tags"): "read",
+    ("GET", "/api/container-tags/{name}"): "read",
+    ("PUT", "/api/container-tags/{name}"): "operator",
+    ("GET", "/api/stacks/{name}/tags"): "read",
+    ("PUT", "/api/stacks/{name}/tags"): "operator",
+}
+EXEC_AND_CHOWN = (
+    ("POST", "/api/containers/{id}/exec/run"),
+    ("POST", "/api/containers/{id}/files/chown"),
+)
+
+
+def test_operations_new_in_1_0_49_are_classified(emap: dict[tuple[str, str], str]) -> None:
+    assert {k: emap.get(k) for k in NEW_IN_1_0_49} == NEW_IN_1_0_49
+
+
+def test_chown_has_the_tier_of_chmod(emap: dict[tuple[str, str], str]) -> None:
+    assert emap[("POST", "/api/containers/{id}/files/chmod")] == "excluded"
+    assert emap[("POST", "/api/containers/{id}/files/chown")] == "excluded"
+
+
+@pytest.mark.parametrize("profile", list(Profile))
+@pytest.mark.parametrize("endpoint", EXEC_AND_CHOWN)
+def test_exec_run_and_chown_are_unreachable(
+    emap: dict[tuple[str, str], str], profile: Profile, endpoint: tuple[str, str]
+) -> None:
+    assert emap.get(endpoint) == "excluded"
+    for tool in REGISTRY.tools_for_profile(profile):
+        assert endpoint not in tool.endpoints, tool.name
+    # No tool tier may declare it, so a tool that tried would fail registration's map check.
+    for tier in Tier:
+        assert violations(_entry(tier, endpoint), emap) != []
