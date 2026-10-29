@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Operations whose environment query parameter DockHand requires (API v1.0.49).
+"""Operations whose environment query parameter DockHand requires (API v1.0.55).
 
 Generated from the `/api/docs` OpenAPI document by `scripts/gen-endpoint-map.py --env-required`;
 do not edit. `client/dockhand.py` refuses a request to any of these, before sending it, when the
@@ -52,6 +52,9 @@ ENV_REQUIRED: Final[Mapping[tuple[str, str], str]] = MappingProxyType(
         ("GET", "/api/containers/{id}/version-notes"): "env",
         ("GET", "/api/preferences/favorite-groups"): "env",
         ("GET", "/api/preferences/favorites"): "env",
+        ("GET", "/api/scheduled-actions/{containerName}"): "env",
+        ("PUT", "/api/scheduled-actions/{containerName}"): "env",
+        ("GET", "/api/stack-stats"): "env",
         ("GET", "/api/system/disk"): "env",
     }
 )
