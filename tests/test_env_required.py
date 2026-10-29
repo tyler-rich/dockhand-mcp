@@ -22,10 +22,11 @@ from conftest import ENV, SetEnv
 from dockhand_mcp.tools.registry import REGISTRY, Tier
 
 REFERENCE_SPEC = (
-    Path(__file__).resolve().parents[1] / "docs" / "api" / "dockhand-openapi-1.0.49.json"
+    Path(__file__).resolve().parents[1] / "docs" / "api" / "dockhand-openapi-1.0.55.json"
 )
 
-# Every operation in the 1.0.49 spec with a required environment query parameter.
+# Every operation in the 1.0.55 spec with a required environment query parameter. 1.0.55 added
+# three (stack-stats and the two scheduled-actions operations); no existing one changed.
 ENV_REQUIRED: dict[tuple[str, str], str] = {
     ("POST", "/api/containers/batch-update"): "env",
     ("POST", "/api/containers/batch-update-stream"): "env",
@@ -66,6 +67,9 @@ ENV_REQUIRED: dict[tuple[str, str], str] = {
     ("GET", "/api/containers/{id}/version-notes"): "env",
     ("GET", "/api/preferences/favorite-groups"): "env",
     ("GET", "/api/preferences/favorites"): "env",
+    ("GET", "/api/scheduled-actions/{containerName}"): "env",
+    ("PUT", "/api/scheduled-actions/{containerName}"): "env",
+    ("GET", "/api/stack-stats"): "env",
     ("GET", "/api/system/disk"): "env",
 }
 

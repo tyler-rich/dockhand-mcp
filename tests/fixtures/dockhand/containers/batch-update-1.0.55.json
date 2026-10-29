@@ -1,0 +1,29 @@
+{
+  "_comment": "Invented from the DockHand 1.0.55 spec schema (POST /api/containers/batch-update: each result may carry warnings[{status, message}]; the status and message values are invented); not a recorded response. {{NAME}} placeholders are filled at load time.",
+  "body": {
+    "success": true,
+    "results": [
+      {
+        "containerId": "{{CID_WEB}}",
+        "containerName": "web",
+        "success": true,
+        "warnings": [
+          {
+            "status": "skipped",
+            "message": "newer image is younger than the minimum release age"
+          }
+        ]
+      },
+      {
+        "containerId": "{{CID_DB}}",
+        "containerName": "db",
+        "success": true
+      }
+    ],
+    "summary": {
+      "total": 2,
+      "success": 2,
+      "failed": 0
+    }
+  }
+}

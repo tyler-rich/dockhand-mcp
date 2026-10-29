@@ -17,7 +17,7 @@ from dockhand_mcp.tools.registry import REGISTRY, Profile, RegisteredTool, Tier
 
 ROOT = Path(__file__).resolve().parents[1]
 ENDPOINT_MAP = ROOT / "docs" / "api" / "ENDPOINT-MAP.md"
-REFERENCE_SPEC = ROOT / "docs" / "api" / "dockhand-openapi-1.0.49.json"
+REFERENCE_SPEC = ROOT / "docs" / "api" / "dockhand-openapi-1.0.55.json"
 GENERATOR = ROOT / "scripts" / "gen-endpoint-map.py"
 ENV_REQUIRED_MODULE = ROOT / "src" / "dockhand_mcp" / "client" / "env_required.py"
 ROW = re.compile(r"^\| `(?P<method>[A-Z]+)` \| `(?P<path>[^`]+)` \| \*\*(?P<tier>[a-z]+)\*\* \|")
@@ -177,3 +177,75 @@ def test_exec_run_and_chown_are_unreachable(
     # No tool tier may declare it, so a tool that tried would fail registration's map check.
     for tier in Tier:
         assert violations(_entry(tier, endpoint), emap) != []
+
+
+# The operations DockHand 1.0.55 added, with the tier each was given (ARCHIVE §14, 1.0.55).
+NEW_EXCLUDED_IN_1_0_55: tuple[tuple[str, str], ...] = (
+    # passkey sign-in and registration (auth) and the user's own passkeys (profile)
+    ("POST", "/api/auth/passkeys/login/options"),
+    ("POST", "/api/auth/passkeys/login/verify"),
+    ("POST", "/api/auth/passkeys/register/options"),
+    ("POST", "/api/auth/passkeys/register/verify"),
+    ("GET", "/api/profile/passkeys"),
+    ("DELETE", "/api/profile/passkeys/{id}"),
+    # UI preferences
+    ("GET", "/api/preferences/environment-order"),
+    ("POST", "/api/preferences/environment-order"),
+    ("DELETE", "/api/preferences/environment-order"),
+    ("GET", "/api/preferences/language"),
+    ("PUT", "/api/preferences/language"),
+    ("GET", "/api/preferences/tag-order"),
+    ("POST", "/api/preferences/tag-order"),
+    ("DELETE", "/api/preferences/tag-order"),
+    # the global default secret provider
+    ("GET", "/api/secret-providers/default"),
+    ("PUT", "/api/secret-providers/default"),
+    # environment state reports: the export and the scheduled-report configuration
+    ("GET", "/api/environments/report"),
+    ("GET", "/api/environments/{id}/report"),
+    ("POST", "/api/environments/{id}/report"),
+)
+NEW_IN_1_0_55: dict[tuple[str, str], str] = {
+    **dict.fromkeys(NEW_EXCLUDED_IN_1_0_55, "excluded"),
+    ("GET", "/api/stack-stats"): "read",
+    ("GET", "/api/scheduled-actions/{containerName}"): "read",
+    ("PUT", "/api/scheduled-actions/{containerName}"): "operator",
+    ("GET", "/api/settings/minimum-release-age"): "read",
+    ("POST", "/api/settings/minimum-release-age"): "admin",
+    ("GET", "/api/settings/pinned-digest-report"): "read",
+    ("POST", "/api/settings/pinned-digest-report"): "admin",
+}
+
+
+def test_operations_new_in_1_0_55_are_classified(emap: dict[tuple[str, str], str]) -> None:
+    assert len(NEW_IN_1_0_55) == 26
+    assert {k: emap.get(k) for k in NEW_IN_1_0_55} == NEW_IN_1_0_55
+
+
+def test_new_settings_operations_have_the_tiers_of_existing_settings_operations(
+    emap: dict[tuple[str, str], str],
+) -> None:
+    assert emap[("GET", "/api/settings/semver")] == "read"
+    assert emap[("POST", "/api/settings/semver")] == "admin"
+    for name in ("minimum-release-age", "pinned-digest-report"):
+        assert emap[("GET", f"/api/settings/{name}")] == emap[("GET", "/api/settings/semver")]
+        assert emap[("POST", f"/api/settings/{name}")] == emap[("POST", "/api/settings/semver")]
+
+
+@pytest.mark.parametrize("profile", list(Profile))
+@pytest.mark.parametrize("endpoint", NEW_EXCLUDED_IN_1_0_55)
+def test_operations_excluded_in_1_0_55_are_unreachable(
+    emap: dict[tuple[str, str], str], profile: Profile, endpoint: tuple[str, str]
+) -> None:
+    assert emap.get(endpoint) == "excluded"
+    for tool in REGISTRY.tools_for_profile(profile):
+        assert endpoint not in tool.endpoints, tool.name
+    # No tool tier may declare it, so a tool that tried would fail registration's map check.
+    for tier in Tier:
+        assert violations(_entry(tier, endpoint), emap) != []
+
+
+@pytest.mark.parametrize("endpoint", list(NEW_IN_1_0_55))
+def test_no_tool_calls_an_operation_new_in_1_0_55(endpoint: tuple[str, str]) -> None:
+    for tool in REGISTRY.all():
+        assert endpoint not in tool.endpoints, tool.name

@@ -105,7 +105,7 @@ def pypi(vid: str, severity: str = "5.3") -> dict[str, Any]:
 
 def scan(*packages: dict[str, Any], source_type: str = "os") -> dict[str, Any]:
     path = (
-        "/var/lib/dpkg/status" if source_type == "os" else "/app/.venv/lib/python3.14/site-packages"
+        "/var/lib/dpkg/status" if source_type == "os" else "/app/.venv/lib/python3.15/site-packages"
     )
     return {
         "results": [{"source": {"path": path, "type": source_type}, "packages": list(packages)}]

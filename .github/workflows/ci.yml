@@ -21,7 +21,10 @@ env:
   OSV_SCANNER_VERSION: v2.6.0
   # sha256 of osv-scanner_linux_amd64 from the release above (its osv-scanner_SHA256SUMS).
   OSV_SCANNER_SHA256: ca69b3d3cd08f889a49dc0a383122f71cc528b83803671df5fd874d97485b108
-  SEMGREP_VERSION: 1.178.0
+  SEMGREP_VERSION: 1.182.1
+  # Semgrep does not run on CPython 3.15 yet (semgrep-core crashes), so it runs on 3.14. Same
+  # rules, files and --error. Drop --python once a Semgrep release runs on 3.15 (CONTRIBUTING).
+  SEMGREP_PYTHON: "3.14"
   GITLEAKS_VERSION: 8.30.1
 
 jobs:
@@ -148,7 +151,7 @@ jobs:
 
       - name: Semgrep CE (src/)
         if: steps.changes.outputs.src == 'true'
-        run: uvx "semgrep@${SEMGREP_VERSION}" scan --config p/python --config p/security-audit --error --metrics=off src/
+        run: uvx --python "${SEMGREP_PYTHON}" "semgrep@${SEMGREP_VERSION}" scan --config p/python --config p/security-audit --error --metrics=off src/
 
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
         if: steps.changes.outputs.image == 'true'

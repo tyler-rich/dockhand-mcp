@@ -3,14 +3,14 @@ name = "dockhand-mcp"
 version = "0.2.0"
 description = "Security-first MCP server exposing a curated, profile-gated subset of the DockHand REST API."
 readme = "README.md"
-requires-python = ">=3.14"
+requires-python = ">=3.15"
 license = "Apache-2.0"
 license-files = ["LICENSE", "NOTICE"]
 authors = [{ name = "tyler-rich" }]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.15",
     "Typing :: Typed",
 ]
 dependencies = [
@@ -38,9 +38,15 @@ dev = [
 requires = ["uv_build>=0.12.19,<0.13"]
 build-backend = "uv_build"
 
+[tool.uv]
+# PyYAML has no CPython 3.15 wheel, so it is built from its sdist, and uv.lock does not lock build
+# dependencies. Its build backend is pinned here by hand (CONTRIBUTING.md, "Hand-maintained pins").
+# Remove these pins, and PYYAML_FORCE_LIBYAML in the Dockerfile, once PyYAML ships cp315 wheels.
+build-constraint-dependencies = ["setuptools==84.2.1", "Cython==3.3.0"]
+
 [tool.ruff]
 line-length = 100
-target-version = "py314"
+target-version = "py315"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "S", "N", "ASYNC", "RUF"]
@@ -53,9 +59,10 @@ select = ["E", "F", "I", "B", "UP", "S", "N", "ASYNC", "RUF"]
 "scripts/gen-endpoint-map.py" = ["E501", "UP031", "B007"]
 
 [tool.mypy]
-python_version = "3.14"
+python_version = "3.15"
 strict = true
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]

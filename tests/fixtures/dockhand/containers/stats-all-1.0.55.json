@@ -1,0 +1,21 @@
+{
+  "_comment": "Invented from the DockHand 1.0.55 spec schema (1.0.55 adds `stack` to each GET /api/containers/stats entry, null for a standalone container; the rest follows stats-all.json); not a recorded response. {{NAME}} placeholders are filled at load time.",
+  "body": [
+    {
+      "id": "{{CID_WEB}}",
+      "name": "web",
+      "stack": "stack-a",
+      "cpuPercent": 1.5,
+      "memoryUsage": 1000,
+      "memoryPercent": 1.0
+    },
+    {
+      "id": "{{CID_DB}}",
+      "name": "db",
+      "stack": null,
+      "cpuPercent": 0.5,
+      "memoryUsage": 3000,
+      "memoryPercent": 3.0
+    }
+  ]
+}

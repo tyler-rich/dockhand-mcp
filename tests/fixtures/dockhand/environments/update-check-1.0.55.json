@@ -1,0 +1,14 @@
+{
+  "_comment": "Invented from the DockHand 1.0.55 spec schema (GET /api/environments/{id}/update-check: settings gains minimumReleaseAgeHours, minimumReleaseAgeOverride and minimumReleaseAgeOverridden); not a recorded response. {{NAME}} placeholders are filled at load time.",
+  "body": {
+    "settings": {
+      "enabled": true,
+      "cron": "0 4 * * *",
+      "autoUpdate": false,
+      "vulnerabilityCriteria": "never",
+      "minimumReleaseAgeHours": 24,
+      "minimumReleaseAgeOverride": true,
+      "minimumReleaseAgeOverridden": true
+    }
+  }
+}

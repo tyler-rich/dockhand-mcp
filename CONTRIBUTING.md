@@ -66,6 +66,31 @@ tool catalogue, update the snapshots under `tests/fixtures/` in the same PR.
 - A new runtime dependency needs a reason in the PR. Its licence must be permissive and
   compatible with Apache-2.0 (no GPL, AGPL, LGPL, SSPL, BUSL or similar).
 
+### Hand-maintained pins
+
+`uv lock --upgrade` and `ci`'s dependency-freshness check don't see these; bump them by hand to
+the newest stable release whenever you refresh dependencies.
+
+- `build-constraint-dependencies` in `pyproject.toml`: `setuptools` and `Cython`, the build
+  backend of PyYAML, which is built from its sdist because PyYAML has no CPython 3.15 wheel.
+  `uv.lock` doesn't lock (or hash) build dependencies. When PyYAML ships cp315 wheels, remove
+  these pins and `PYYAML_FORCE_LIBYAML` from the `Dockerfile`.
+- `SEMGREP_VERSION` and `SEMGREP_PYTHON` in `.github/workflows/ci.yml`: Semgrep runs on CPython
+  3.14 because no Semgrep release runs on 3.15 yet (its engine crashes there). When one does,
+  remove `SEMGREP_PYTHON` and the step's `--python`.
+
+### PyYAML on Windows
+
+Until PyYAML ships CPython 3.15 wheels, `uv sync` on Windows builds it from source and fails
+without the Microsoft C++ Build Tools. Skip its optional C extension instead (the project uses
+only the pure-Python loader):
+
+```sh
+PYYAML_FORCE_LIBYAML=0 uv sync
+```
+
+In PowerShell, set `$env:PYYAML_FORCE_LIBYAML = "0"` first.
+
 ## Licence
 
 - dockhand-mcp is licensed under the [Apache License 2.0](LICENSE). Under its Section 5, any

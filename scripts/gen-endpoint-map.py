@@ -4,11 +4,11 @@
 
 The OpenAPI document (GET /api/docs) is NOT committed to this repository (docs/api/*.json is
 git-ignored); the maintainer attaches it to the Claude Code sessions that need it, and it is saved
-locally as docs/api/dockhand-openapi-1.0.49.json for the duration of the work.
+locally as docs/api/dockhand-openapi-1.0.55.json for the duration of the work.
 
 Usage:
-    python3 scripts/gen-endpoint-map.py docs/api/dockhand-openapi-1.0.49.json > docs/api/ENDPOINT-MAP.md
-    python3 scripts/gen-endpoint-map.py --env-required docs/api/dockhand-openapi-1.0.49.json \
+    python3 scripts/gen-endpoint-map.py docs/api/dockhand-openapi-1.0.55.json > docs/api/ENDPOINT-MAP.md
+    python3 scripts/gen-endpoint-map.py --env-required docs/api/dockhand-openapi-1.0.55.json \
         > src/dockhand_mcp/client/env_required.py
 
 `--env-required` writes the operations whose environment query parameter the spec marks required,
@@ -111,6 +111,12 @@ def tier(tag: str, m: str, p: str) -> str:
         if m == "get":
             return "read"
         return "admin" if tag == "tags" else "operator"
+    if tag == "stack-stats":
+        return "read"  # 1.0.55: a per-stack stats snapshot
+    if tag == "scheduled-actions":
+        # 1.0.55: a container's scheduled start/stop times. Setting them is operator, like setting
+        # its auto-update (`auto-update`).
+        return "read" if m == "get" else "operator"
     if tag in ("images", "volumes", "networks"):
         if any(k in p for k in ("/export", "/load", "/push", "/browse")):
             return "excluded"
@@ -124,7 +130,8 @@ def tier(tag: str, m: str, p: str) -> str:
     if tag == "prune":
         return "destructive"
     if tag == "environments":
-        if "icon" in p or "notifications" in p:
+        # 1.0.55: /report exports, or schedules mailing, a whole-environment state report.
+        if "icon" in p or "notifications" in p or p.endswith("/report"):
             return "excluded"
         if m == "get":
             return "read"
@@ -306,4 +313,4 @@ if __name__ == "__main__":
     args = sys.argv[1:]
     as_module = "--env-required" in args
     args = [a for a in args if a != "--env-required"]
-    main(args[0] if args else "docs/api/dockhand-openapi-1.0.49.json", env_required=as_module)
+    main(args[0] if args else "docs/api/dockhand-openapi-1.0.55.json", env_required=as_module)

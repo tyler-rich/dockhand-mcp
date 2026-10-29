@@ -8,12 +8,16 @@
 FROM ghcr.io/astral-sh/uv:0.12.19@sha256:04d046b13e60d6bcec73cbc5e1cad25d680dea90c8573340950a0ac2d1aef424 AS uv
 
 # ---- build: resolve the locked dependencies into a virtualenv ------------------------------------
-FROM python:3.14-slim@sha256:51dafde81dbdb6ebde285137a295cf18a47ca95234fe388a343719cb97305b3d AS build
+FROM python:3.15-slim@sha256:94d3426f1def7db4a106a232ac121bfd975393e5dfd40a619b955fae45fe7913 AS build
 
 COPY --from=uv /uv /usr/local/bin/uv
 
+# PYYAML_FORCE_LIBYAML=0: PyYAML is built from its sdist on 3.15 (no cp315 wheel); skip its libyaml
+# extension, since the app uses only the pure-Python safe_load/safe_dump. Remove it together with the
+# build-constraint pins in pyproject.toml once PyYAML ships cp315 wheels.
 ENV UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
+    PYYAML_FORCE_LIBYAML=0 \
     UV_PYTHON_DOWNLOADS=never \
     UV_PROJECT_ENVIRONMENT=/app/.venv
 
@@ -28,7 +32,7 @@ COPY src ./src
 RUN uv sync --frozen --no-dev --no-editable
 
 # ---- runtime: only the virtualenv (which holds the app) and the licence files ---------------------
-FROM python:3.14-slim@sha256:51dafde81dbdb6ebde285137a295cf18a47ca95234fe388a343719cb97305b3d
+FROM python:3.15-slim@sha256:94d3426f1def7db4a106a232ac121bfd975393e5dfd40a619b955fae45fe7913
 
 # Set by the release workflow; the defaults mark a local build.
 ARG VERSION=0.0.0-dev

@@ -27,7 +27,7 @@ profile's user.
 
 The tables below are built from each tool's declared endpoints (`dockhand-mcp tools` prints them)
 and the **Perm** column of [`docs/api/ENDPOINT-MAP.md`](api/ENDPOINT-MAP.md), which records the
-permission strings DockHand's API document (v1.0.49) states for each endpoint. Many endpoints state
+permission strings DockHand's API document (v1.0.55) states for each endpoint. Many endpoints state
 none. Those rows say **verify**: the name given is the closest permission the document uses
 elsewhere, so check in DockHand's role editor which permission gates that area, and confirm with
 `dockhand-mcp check` (step 5) and a first call of the tools involved.
@@ -39,18 +39,20 @@ Each profile includes everything in the profiles above it.
 | Permission | Needed for | Source |
 |---|---|---|
 | `environments:view` | Every environment-scoped tool resolves `environment_id` | spec |
-| `stacks:view` | Stack list, compose, `.env`, variables, deploy runs, git stacks, stack validation | spec |
+| `stacks:view` | Stack list, compose, `.env`, variables, deploy runs, git stacks, stack validation, stack paths | spec |
+| `stacks:edit` | Only the path hints in `dockhand_get_stack_paths` (`GET /api/stacks/path-hints`). Don't grant it to a read-only role for this: without it the tool reports the path hints under `errors` and returns the rest. | spec |
 | `volumes:view`, `volumes:inspect` | `dockhand_list_volumes`, `dockhand_get_volume` | spec |
 | `activity:view` | `dockhand_get_activity`, `dockhand_get_activity_stats` | spec |
 | `git:view` | Git repository tools | spec |
 | `registries:view` | Registry browsing tools | spec |
-| `settings:view` | `dockhand_get_settings` (scanner part), database health | spec |
+| `settings:view` | `dockhand_get_settings` (general, scanner and semver settings), database health | spec |
 | `stacks:remove` | `dockhand_preview_stack_delete` only (DockHand gates the preview with the delete permission). If you'd rather not grant it, leave it out and set `DOCKHAND_MCP_DISABLE_TOOLS=dockhand_preview_stack_delete`. | spec |
 | `containers:view`, `stacks:view` | `dockhand_list_tags` (the tag catalogue and container tags need `containers:view`, stack tags `stacks:view`) | spec |
 | `containers:view`, `containers:logs` | Container list, inspect, logs, stats, top, sizes, generated compose, pending updates | **verify** |
 | images (view) | Image list, history, scan results, vulnerabilities | **verify** |
 | networks (view) | Network list and inspect | **verify** |
-| `schedules:view` | Schedules and their executions | **verify** |
+| `schedules:view` | Schedule list, auto-update settings | spec |
+| `schedules:view` | Schedule executions | **verify** |
 | system/host (view) | Host info, system info, disk usage, job status | **verify** |
 | audit (view) | `dockhand_get_audit_log` (the audit log is Enterprise-only) | **verify** |
 
