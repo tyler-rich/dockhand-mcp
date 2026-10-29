@@ -1,0 +1,10 @@
+{
+  "_comment": "Invented from the DockHand 1.0.55 spec schema (GET /api/settings/semver: adds the required rejectOlderImages); not a recorded response. {{NAME}} placeholders are filled at load time.",
+  "body": {
+    "enabled": true,
+    "maxBump": "minor",
+    "matchFlavor": true,
+    "includePrerelease": false,
+    "rejectOlderImages": true
+  }
+}

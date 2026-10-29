@@ -1,0 +1,7 @@
+{
+  "_comment": "Invented from the DockHand 1.0.55 spec schema (GET /api/settings/general for a caller without settings:view: the operational settings are omitted, not empty; which keys remain is invented); not a recorded response. {{NAME}} placeholders are filled at load time.",
+  "body": {
+    "confirmDestructive": true,
+    "showStoppedContainers": true
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "_comment": "Invented from the DockHand 1.0.55 spec schema (GET /api/settings/scanner: the 200 description adds newerVersions (no 200 schema; its shape here is invented); the rest follows scanner.json); not a recorded response. {{NAME}} placeholders are filled at load time.",
+  "body": {
+    "settings": {
+      "scanner": "grype",
+      "grypeArgs": "",
+      "trivyArgs": "",
+      "grypeImage": "anchore/grype:latest",
+      "trivyImage": "aquasec/trivy:latest"
+    },
+    "newerVersions": {
+      "grype": null,
+      "trivy": null
+    },
+    "defaults": {
+      "grypeArgs": "",
+      "trivyArgs": "",
+      "networkMode": "bridge",
+      "dns": []
+    }
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "_comment": "Invented from the DockHand 1.0.55 spec schema (GET /api/containers/pending-updates: top-level minimumReleaseAgeHours; per item pinnedToDigest (required), releaseAgeRemainingHours, newerVersion); not a recorded response. {{NAME}} placeholders are filled at load time.",
+  "body": {
+    "environmentId": 7,
+    "minimumReleaseAgeHours": 48,
+    "pendingUpdates": [
+      {
+        "containerId": "{{CID_WEB}}",
+        "containerName": "web",
+        "currentImage": "nginx:1.27",
+        "checkedAt": "2026-01-02T03:04:05.000Z",
+        "hasImageUpdate": true,
+        "pinnedToDigest": false,
+        "releaseAgeRemainingHours": 12,
+        "newerVersion": {
+          "tag": "1.28"
+        }
+      },
+      {
+        "containerId": "{{CID_DB}}",
+        "containerName": "db",
+        "currentImage": "redis@sha256:{{DIGEST_NGINX}}",
+        "checkedAt": "2026-01-02T03:00:00.000Z",
+        "hasImageUpdate": false,
+        "pinnedToDigest": true
+      }
+    ]
+  }
+}
