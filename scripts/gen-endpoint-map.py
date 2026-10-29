@@ -130,8 +130,9 @@ def tier(tag: str, m: str, p: str) -> str:
     if tag == "prune":
         return "destructive"
     if tag == "environments":
+        # 1.0.55: /report exports, or schedules mailing, a whole-environment state report.
         if "icon" in p or "notifications" in p or p.endswith("/report"):
-            return "excluded"  # 1.0.55: /report exports or schedules a whole-environment state report
+            return "excluded"
         if m == "get":
             return "read"
         if p.endswith("/test") or "detect-socket" in p:
