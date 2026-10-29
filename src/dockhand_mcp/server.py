@@ -5,8 +5,7 @@ Built on the SDK's low-level `Server`, which derives its advertised capabilities
 handlers registered on it. Registering only `tools/list` and `tools/call` makes both the
 2026-07-28 `server/discover` result and the 2025-11-25 `initialize` result advertise `tools`
 alone, with `listChanged` false (ARCHITECTURE §7). `MCPServer` is not used because it always
-registers resource, prompt and `subscriptions/listen` handlers. `ToolsOnlyServer` removes the one
-remaining extra, an empty `experimental` object in the handshake-era `initialize` result.
+registers resource, prompt and `subscriptions/listen` handlers.
 
 A destructive tool may answer `tools/call` with an MCP 2026-07-28 `input_required` result (a
 form-mode elicitation asking the human to approve, auth/approval.py). Elicitation is a client
@@ -25,7 +24,7 @@ from typing import TYPE_CHECKING, Any, Final
 import anyio
 import httpx
 from mcp import types
-from mcp.server import InitializationOptions, NotificationOptions, Server, ServerRequestContext
+from mcp.server import Server, ServerRequestContext
 from mcp.shared.exceptions import MCPError
 from mcp_types import INTERNAL_ERROR, INVALID_PARAMS, InputRequiredResult
 from pydantic import ValidationError
@@ -199,29 +198,6 @@ class ToolDispatcher:
         return envelope.model_copy(update={"data": data})
 
 
-class ToolsOnlyServer(Server[ServerState]):
-    """The SDK server minus the empty `experimental` object in the handshake-era `initialize`.
-
-    `Server.create_initialization_options()` always passes `experimental={}`, which the
-    2025-11-25 `initialize` result then carries. Dropping it makes both revisions advertise
-    exactly `{"tools": {"listChanged": false}}`. Nothing else is changed.
-    """
-
-    def create_initialization_options(
-        self,
-        notification_options: NotificationOptions | None = None,
-        experimental_capabilities: dict[str, dict[str, Any]] | None = None,
-        extensions: dict[str, dict[str, Any]] | None = None,
-    ) -> InitializationOptions:
-        options = super().create_initialization_options(
-            notification_options, experimental_capabilities, extensions
-        )
-        if options.capabilities.experimental:
-            return options
-        capabilities = options.capabilities.model_copy(update={"experimental": None})
-        return options.model_copy(update={"capabilities": capabilities})
-
-
 def _principal(ctx: ServerRequestContext[Any, Any], default: Principal | None) -> Principal:
     """The caller, as authenticated by the HTTP pipeline; `default` only where there is none."""
     request = ctx.request
@@ -243,7 +219,7 @@ def build_server(
     default_principal: Principal | None = None,
     dockhand_transport: httpx.AsyncBaseTransport | None = None,
     dockhand_recorder: Recorder | None = None,
-) -> ToolsOnlyServer:
+) -> Server[ServerState]:
     """The SDK server exposing the profile's tools. `default_principal` is for stdio only."""
     dispatcher = ToolDispatcher(
         registry.tools_for_profile(settings.profile, frozenset(settings.disable_tools))
@@ -295,7 +271,7 @@ def build_server(
             ctx.lifespan_context, principal, params.name, params.arguments, report, client
         )
 
-    return ToolsOnlyServer(
+    return Server(
         SERVER_NAME,
         version=__version__,
         lifespan=lifespan,
