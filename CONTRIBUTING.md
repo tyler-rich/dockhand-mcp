@@ -75,6 +75,9 @@ the newest stable release whenever you refresh dependencies.
   backend of PyYAML, which is built from its sdist because PyYAML has no CPython 3.15 wheel.
   `uv.lock` doesn't lock (or hash) build dependencies. When PyYAML ships cp315 wheels, remove
   these pins and `PYYAML_FORCE_LIBYAML` from the `Dockerfile`.
+- `SEMGREP_VERSION` and `SEMGREP_PYTHON` in `.github/workflows/ci.yml`: Semgrep runs on CPython
+  3.14 because no Semgrep release runs on 3.15 yet (its engine crashes there). When one does,
+  remove `SEMGREP_PYTHON` and the step's `--python`.
 
 ### PyYAML on Windows
 
