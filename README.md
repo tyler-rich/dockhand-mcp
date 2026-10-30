@@ -53,6 +53,9 @@ Design and threat model: [`docs/SECURITY.md`](docs/SECURITY.md). Locked decision
 
 ## Quick start (Docker Compose)
 
+The Docker image is the recommended install. Installing from source requires Python 3.15
+([`CONTRIBUTING.md`](CONTRIBUTING.md) has the setup).
+
 You need a DockHand API token first: [`docs/DOCKHAND-SETUP.md`](docs/DOCKHAND-SETUP.md) walks
 through the dedicated user, the Enterprise role or the Free-edition warning, and the token.
 
