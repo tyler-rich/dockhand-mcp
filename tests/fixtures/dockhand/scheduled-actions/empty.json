@@ -1,0 +1,13 @@
+{
+  "_comment": "Invented from the DockHand 1.0.55 spec 200 schema of GET /api/scheduled-actions/{containerName} (a container with no schedule); not a recorded response.",
+  "body": {
+    "startAt": null,
+    "stopAt": null,
+    "enabled": true,
+    "source": "ui",
+    "labelErrors": [],
+    "systemContainer": false,
+    "lastStarted": null,
+    "lastStopped": null
+  }
+}

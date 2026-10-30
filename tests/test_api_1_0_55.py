@@ -10,8 +10,9 @@ minimum-release-age fields on an environment's update check; `stacksUsing` on a 
 settings:view. Each tool must accept the new shape against its outputSchema, keep the new fields,
 and run them through the output redaction. The fixtures are invented (`*-1.0.55*.json`).
 
-It also pins that the schedule tools refuse the schedule types 1.0.55 introduced, and
-`deploy_log_reconcile`, before any request.
+It also pins that the schedule tools refuse `deploy_log_reconcile` and the destructive schedule
+types before any request; `container_start` and `container_stop`, new in 1.0.55, are allowed since
+#19 (tests/test_scheduled_actions.py).
 """
 
 import json
@@ -239,14 +240,15 @@ async def test_update_containers_redacts_batch_warning_messages(
 
 # --- schedule types -----------------------------------------------------------------------------
 
-# 1.0.55 added container_start and container_stop to the run and toggle routes;
-# deploy_log_reconcile was already listed there in 1.0.49.
-REFUSED_TYPES = ("container_start", "container_stop", "deploy_log_reconcile")
+# 1.0.55 added container_start and container_stop to the run and toggle routes; #19 allows them
+# (starting or stopping a container is already an operator action). deploy_log_reconcile (listed
+# since 1.0.49) and the destructive types stay refused.
+REFUSED_TYPES = ("deploy_log_reconcile", "image_prune", "repo_prune")
 
 
 @pytest.mark.parametrize("tool", ["dockhand_run_schedule_now", "dockhand_toggle_schedule"])
 @pytest.mark.parametrize("schedule_type", REFUSED_TYPES)
-async def test_schedule_tools_refuse_the_new_types(
+async def test_schedule_tools_refuse_the_other_types(
     tool: str, schedule_type: str, dockhand: respx.MockRouter, operator_env: SetEnv
 ) -> None:
     operator_env()

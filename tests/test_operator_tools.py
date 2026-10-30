@@ -48,6 +48,7 @@ IDEMPOTENT = {
     "dockhand_stop_container",
     "dockhand_pause_container",
     "dockhand_unpause_container",
+    "dockhand_set_scheduled_actions",
     "dockhand_start_stack",
     "dockhand_stop_stack",
 }
@@ -181,6 +182,14 @@ CASES: dict[str, tuple[dict[str, Any], list[Route]]] = {
     "dockhand_set_container_auto_update": (
         {**E, "container_name": "web", "enabled": True, "cron": "0 4 * * *"},
         [containers(), ("POST", "/api/auto-update/web", fx("containers", "auto-update-set"))],
+    ),
+    "dockhand_set_scheduled_actions": (
+        {**E, "container": "web", "start": "07:00", "stop": "0 23 * * 1-5"},
+        [
+            containers(),
+            ("GET", "/api/scheduled-actions/web", fx("scheduled-actions", "set")),
+            ("PUT", "/api/scheduled-actions/web", fx("scheduled-actions", "set")),
+        ],
     ),
     "dockhand_start_stack": (
         S,
@@ -351,7 +360,11 @@ CASES: dict[str, tuple[dict[str, Any], list[Route]]] = {
 }
 
 ENV_WRITES = {"dockhand_update_stack_env_raw", "dockhand_modify_stack_env"}
-VERIFIED = ENV_WRITES | {"dockhand_update_stack_compose", "dockhand_create_stack"}
+VERIFIED = ENV_WRITES | {
+    "dockhand_update_stack_compose",
+    "dockhand_create_stack",
+    "dockhand_set_scheduled_actions",
+}
 
 
 def _response(body: Any, status: int = 200) -> httpx.Response:

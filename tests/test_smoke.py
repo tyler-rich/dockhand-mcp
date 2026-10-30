@@ -258,6 +258,8 @@ def test_operator_plan_is_a_pinned_write_plan(smoke: ModuleType) -> None:
         "dockhand_get_stack_deploy_log",
         "dockhand_restart_stack",
         "dockhand_stop_stack",
+        "dockhand_set_scheduled_actions",
+        "dockhand_get_scheduled_actions",
     ):
         assert tool in tools
     seed = smoke.write_plan_seed(TEST_ENV)
@@ -290,6 +292,7 @@ def test_main_refuses_a_write_plan_before_any_call(
         {"environment_id": "${test_env}", "stack": "production"},
         {"environment_id": "${test_env}", "name": "mcp-smoke-other"},
         {"environment_id": "${test_env}", "stack": "${smoke_stack}", "ref": "web"},
+        {"environment_id": "${test_env}", "container": "web", "stop": "23:00"},
         {"environment_id": "${test_env}", "git_stack_id": 1},
         {"environment_id": "${test_env}", "volume": "data"},
     ],
@@ -353,8 +356,77 @@ async def test_cleanup_deletes_only_smoke_stacks_in_the_test_environment(
     assert paths == ["/api/stacks/mcp-smoke-1a2b", "/api/stacks/mcp-smoke-ffff"]
     for c in deleted.calls:
         assert c.request.url.params["env"] == str(TEST_ENV)
-    (listed,) = [c for c in dockhand.calls if c.request.method == "GET"]
+    gets = [c for c in dockhand.calls if c.request.method == "GET"]
+    (listed,) = [c for c in gets if c.request.url.path == "/api/stacks"]
     assert listed.request.url.params["env"] == str(TEST_ENV)
+
+
+def smoke_containers() -> list[dict[str, Any]]:
+    def item(name: str, project: str) -> dict[str, Any]:
+        return {"name": name, "labels": {"com.docker.compose.project": project}}
+
+    return [
+        item("mcp-smoke-1a2b-web-1", "mcp-smoke-1a2b"),
+        item("web", "shop"),
+        item("mcp-smoke-zz-web-1", "shop"),  # a smoke-like name outside a smoke project
+        {"name": "lonely"},
+    ]
+
+
+async def test_cleanup_clears_smoke_schedules_before_deleting(
+    smoke: ModuleType, dockhand: respx.MockRouter
+) -> None:
+    dockhand.get("/api/stacks").respond(200, json=[{"name": "shop"}, {"name": "mcp-smoke-1a2b"}])
+    containers = dockhand.get("/api/containers").respond(200, json=smoke_containers())
+    cleared = dockhand.route(method="PUT", path__startswith="/api/scheduled-actions/").respond(
+        200, json={"startAt": None, "stopAt": None}
+    )
+    dockhand.route(method="DELETE", path__startswith="/api/stacks/").respond(
+        200, json={"success": True}
+    )
+    lines: list[str] = []
+    code = await smoke.cleanup(
+        smoke_client(),
+        prefix="mcp-smoke-",
+        environment_id=TEST_ENV,
+        test_env=TEST_ENV,
+        out=lines.append,
+    )
+    assert code == 0
+    assert containers.calls.last.request.url.params["env"] == str(TEST_ENV)
+    assert containers.calls.last.request.url.params["all"] == "true"
+    (put,) = cleared.calls
+    assert put.request.url.path == "/api/scheduled-actions/mcp-smoke-1a2b-web-1"
+    assert put.request.url.params["env"] == str(TEST_ENV)
+    assert json.loads(put.request.content) == {"startAt": "", "stopAt": ""}
+    order = [(c.request.method, c.request.url.path) for c in dockhand.calls]
+    assert order.index(("PUT", "/api/scheduled-actions/mcp-smoke-1a2b-web-1")) < order.index(
+        ("DELETE", "/api/stacks/mcp-smoke-1a2b")
+    )
+
+
+async def test_cleanup_reports_a_schedule_it_could_not_clear(
+    smoke: ModuleType, dockhand: respx.MockRouter
+) -> None:
+    dockhand.get("/api/stacks").respond(200, json=[{"name": "mcp-smoke-1a2b"}])
+    dockhand.get("/api/containers").respond(200, json=smoke_containers())
+    dockhand.route(method="PUT", path__startswith="/api/scheduled-actions/").respond(
+        500, json={"error": "Failed to save the schedule"}
+    )
+    deleted = dockhand.route(method="DELETE", path__startswith="/api/stacks/").respond(
+        200, json={"success": True}
+    )
+    lines: list[str] = []
+    code = await smoke.cleanup(
+        smoke_client(),
+        prefix="mcp-smoke-",
+        environment_id=TEST_ENV,
+        test_env=TEST_ENV,
+        out=lines.append,
+    )
+    assert code == 1
+    assert any("schedule" in line and "FAILED" in line for line in lines)
+    assert deleted.call_count == 1  # the stack is still removed
 
 
 async def test_cleanup_refuses_another_environment_before_any_call(
@@ -373,9 +445,14 @@ async def test_cleanup_refuses_another_environment_before_any_call(
 
 async def test_cleanup_declaration_is_narrow(smoke: ModuleType) -> None:
     assert smoke.MAINTAINER_TOOLING == {"smoke-cleanup": smoke.CLEANUP_ENDPOINTS}
-    assert smoke.CLEANUP_ENDPOINTS == {("GET", "/api/stacks"), ("DELETE", "/api/stacks/{name}")}
+    assert smoke.CLEANUP_ENDPOINTS == {
+        ("GET", "/api/stacks"),
+        ("DELETE", "/api/stacks/{name}"),
+        ("GET", "/api/containers"),
+        ("PUT", "/api/scheduled-actions/{containerName}"),
+    }
     emap = parse_endpoint_map(ENDPOINT_MAP.read_text(encoding="utf-8"))
-    assert {emap[e] for e in smoke.CLEANUP_ENDPOINTS} == {"read", "destructive"}
+    assert {emap[e] for e in smoke.CLEANUP_ENDPOINTS} == {"read", "operator", "destructive"}
     # The client enforces the declaration: anything else is refused before it is sent.
     with declared_endpoints(smoke.CLEANUP_ENDPOINTS), pytest.raises(UndeclaredEndpointError):
         await smoke_client().delete_json("/api/volumes/{name}", path_params={"name": "data"})
