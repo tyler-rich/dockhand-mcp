@@ -135,11 +135,11 @@ Docker secret. [`deploy/.env.example`](deploy/.env.example) lists them all with 
 
 ## Tools
 
-97 tools in three tiers, each registered only in the profiles that include its tier:
+98 tools in three tiers, each registered only in the profiles that include its tier:
 
 | Tier | Profiles | Tools | Examples |
 |---|---|---|---|
-| read | `read-only`, `operator`, `admin` | 51 | environments, containers (list, inspect, logs, stats), stacks (list, compose, `.env`, deploy runs), images, volumes, networks, jobs, host and system, activity, audit (Enterprise), schedules, updates, vulnerabilities, registries, git, tags |
+| read | `read-only`, `operator`, `admin` | 52 | environments, containers (list, inspect, logs, stats), stacks (list, per-stack stats, compose, `.env`, deploy runs), images, volumes, networks, jobs, host and system, activity, audit (Enterprise), schedules, updates, vulnerabilities, registries, git, tags |
 | operator | `operator`, `admin` | 36 | container and stack lifecycle, compose and `.env` edits with read-back verification, create stack with guardrails, image pull, tag and scan, volumes, networks, schedules, git sync and deploy, batch start/stop/restart |
 | destructive | `admin` | 10 | remove container, image, volume or network; stack down and delete; prune; batch remove; run image prune now; clear activity log |
 
