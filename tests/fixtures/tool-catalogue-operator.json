@@ -783,9 +783,9 @@
         "/api/containers/batch-update"
       ]
     ],
-    "description": "Recreate containers with their latest images, keeping their configuration. Refuses the whole call if any carries the label dockhand.update=false.",
+    "description": "Recreate containers with their latest images, keeping their configuration, and return each container's outcome. Refuses the whole call if any carries the label dockhand.update=false; any container failed, skipped or not confirmed updated fails it.",
     "input_schema_sha256": "27c302c32c71ad0946277bc16841cb3512d40257561158e07e0750df7c538bf9",
-    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+    "output_schema_sha256": "66e23b9b905e8aaf3bf983c234d8f7a409bd7e2e512fda0242ee26b9ab4c536b"
   },
   {
     "name": "dockhand_update_stack_compose",
