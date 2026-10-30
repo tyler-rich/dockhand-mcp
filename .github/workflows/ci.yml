@@ -21,7 +21,7 @@ env:
   OSV_SCANNER_VERSION: v2.6.0
   # sha256 of osv-scanner_linux_amd64 from the release above (its osv-scanner_SHA256SUMS).
   OSV_SCANNER_SHA256: ca69b3d3cd08f889a49dc0a383122f71cc528b83803671df5fd874d97485b108
-  SEMGREP_VERSION: 1.182.1
+  SEMGREP_VERSION: 1.183.0
   # Semgrep does not run on CPython 3.15 yet (semgrep-core crashes), so it runs on 3.14. Same
   # rules, files and --error. Drop --python once a Semgrep release runs on 3.15 (CONTRIBUTING).
   SEMGREP_PYTHON: "3.14"
@@ -137,6 +137,9 @@ jobs:
             echo "::error file=.python-version::.python-version is not the newest stable minor ($latest)"
             fail=1
           fi
+
+          # Hand-maintained pins (uv stage, uv_build, build constraints, Semgrep): scripts/deps-current.py.
+          python3 scripts/deps-current.py || fail=1
           exit $fail
 
       - name: OSV-Scanner (uv.lock)

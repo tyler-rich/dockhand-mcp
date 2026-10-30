@@ -45,7 +45,7 @@ uv run mypy --strict src
 uv run pytest -q
 ```
 
-`ci` also runs gitleaks, OSV-Scanner on `uv.lock`, a dependency-freshness check, Semgrep on
+`ci` also runs gitleaks, OSV-Scanner on `uv.lock`, a dependency-freshness check (the lockfile, CPython, and the hand-maintained pins below), Semgrep on
 `src/`, and a Docker build.
 
 ## Adding or changing a tool
@@ -68,16 +68,23 @@ tool catalogue, update the snapshots under `tests/fixtures/` in the same PR.
 
 ### Hand-maintained pins
 
-`uv lock --upgrade` and `ci`'s dependency-freshness check don't see these; bump them by hand to
-the newest stable release whenever you refresh dependencies.
+`uv lock --upgrade` doesn't see these, so `ci`'s deps-current step runs `scripts/deps-current.py`
+(PyPI's newest stable release; an unreachable index skips the check with a notice). It fails when
+any of the following is behind; bump them by hand whenever you refresh dependencies.
 
+- The `uv` stage tag in the `Dockerfile` (its digest is checked by Dependabot, which also bumps it).
+- `uv_build` in `[build-system]`: the lower bound is the newest release and the upper bound is the
+  next minor, so a new minor needs a deliberate bump.
 - `build-constraint-dependencies` in `pyproject.toml`: `setuptools` and `Cython`, the build
   backend of PyYAML, which is built from its sdist because PyYAML has no CPython 3.15 wheel.
   `uv.lock` doesn't lock (or hash) build dependencies. When PyYAML ships cp315 wheels, remove
   these pins and `PYYAML_FORCE_LIBYAML` from the `Dockerfile`.
-- `SEMGREP_VERSION` and `SEMGREP_PYTHON` in `.github/workflows/ci.yml`: Semgrep runs on CPython
-  3.14 because no Semgrep release runs on 3.15 yet (its engine crashes there). When one does,
-  remove `SEMGREP_PYTHON` and the step's `--python`.
+- `SEMGREP_VERSION` in `.github/workflows/ci.yml`.
+
+Watched only by a notice: `SEMGREP_PYTHON` in the same file. Semgrep runs on CPython 3.14 because
+no Semgrep release runs on 3.15 yet (its engine crashes there). The check prints a notice when the
+newest Semgrep declares support for the project's Python; then remove `SEMGREP_PYTHON` and the
+step's `--python`.
 
 ### PyYAML on Windows
 

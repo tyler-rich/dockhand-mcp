@@ -15,7 +15,9 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "deps-current.py"
 
-DOCKERFILE = "FROM ghcr.io/astral-sh/uv:0.13.6@sha256:" + "ab" * 32 + " AS uv\nFROM python:3.15-slim\n"
+DOCKERFILE = (
+    "FROM ghcr.io/astral-sh/uv:0.13.6@sha256:" + "ab" * 32 + " AS uv\nFROM python:3.15-slim\n"
+)
 PYPROJECT = """\
 [build-system]
 requires = ["uv_build>=0.13.6,<0.14"]
