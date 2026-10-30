@@ -137,6 +137,68 @@ register(
     (ENVIRONMENTS, stackguard.LIST),
 )
 
+# --- stats ------------------------------------------------------------------------------------
+
+StackStatsSort = Literal["cpu", "memory", "network", "block_io", "name"]
+
+# Descending for a measure (the heaviest stack first); `name` is ascending. Memory is the usage,
+# network and block I/O are the read-plus-write (receive-plus-transmit) totals.
+_STATS_KEYS: Final[dict[str, tuple[str, ...]]] = {
+    "cpu": ("cpuPercent",),
+    "memory": ("memoryUsage",),
+    "network": ("networkRx", "networkTx"),
+    "block_io": ("blockRead", "blockWrite"),
+}
+
+
+class StackStatsInput(EnvScoped):
+    sort_by: StackStatsSort = Field(
+        default="cpu",
+        description=(
+            "Order by CPU, memory usage, network (receive plus transmit) or block I/O (read "
+            "plus write), highest first; or by name."
+        ),
+    )
+    limit: int = limit_field(50)
+    offset: int = offset_field()
+
+
+def _measure(row: dict[str, Any], keys: tuple[str, ...]) -> float:
+    return sum(
+        v for k in keys if isinstance(v := row.get(k), int | float) and not isinstance(v, bool)
+    )
+
+
+async def get_stack_stats(ctx: ToolContext, args: StackStatsInput, env: int) -> Any:
+    body = await ctx.client.get_json("/api/stack-stats", params={"env": env})
+    rows = sorted(
+        (i for i in list_body(body) if isinstance(i, dict)),
+        key=lambda r: str(r.get("name", "")),
+    )
+    if args.sort_by != "name":
+        keys = _STATS_KEYS[args.sort_by]
+        rows.sort(key=lambda r: _measure(r, keys), reverse=True)  # stable: ties stay by name
+    return page(rows, args.limit, args.offset, sort_by=args.sort_by)
+
+
+register(
+    ToolSpec(
+        name="dockhand_get_stack_stats",
+        title="Get stack stats",
+        description=(
+            "Get CPU, memory, network and block I/O totals for each compose stack in an "
+            "environment, summed over its running containers. Returns stacks heaviest first."
+        ),
+        input_model=StackStatsInput,
+        handler=env_tool(get_stack_stats),
+        annotations=READ_ANNOTATIONS,
+        audit_args=("environment_id", "sort_by", "limit", "offset"),
+        data_schema=PAGE_SCHEMA,
+    ),
+    Tier.READ,
+    (ENVIRONMENTS, ("GET", "/api/stack-stats")),
+)
+
 # --- compose and env --------------------------------------------------------------------------
 
 

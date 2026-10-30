@@ -249,9 +249,10 @@ def test_operations_excluded_in_1_0_55_are_unreachable(
 
 
 @pytest.mark.parametrize("endpoint", list(NEW_IN_1_0_55))
-def test_no_tool_calls_an_operation_new_in_1_0_55(endpoint: tuple[str, str]) -> None:
-    for tool in REGISTRY.all():
-        assert endpoint not in tool.endpoints, tool.name
+def test_only_the_adopted_operations_new_in_1_0_55_have_a_tool(endpoint: tuple[str, str]) -> None:
+    adopted = {("GET", "/api/stack-stats"): {"dockhand_get_stack_stats"}}  # #18
+    callers = {tool.name for tool in REGISTRY.all() if endpoint in tool.endpoints}
+    assert callers == adopted.get(endpoint, set())
 
 
 def test_spec_path_comes_from_the_environment(

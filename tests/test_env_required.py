@@ -125,6 +125,7 @@ def test_the_container_endpoints_tools_use_are_covered() -> None:
         "dockhand_get_container_sizes",
         "dockhand_get_container_stats",
         "dockhand_get_pending_updates",
+        "dockhand_get_stack_stats",
         "dockhand_get_system_info",
         "dockhand_get_version_notes",
         "dockhand_pause_container",

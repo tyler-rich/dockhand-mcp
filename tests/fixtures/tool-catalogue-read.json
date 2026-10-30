@@ -537,6 +537,24 @@
     "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
   },
   {
+    "name": "dockhand_get_stack_stats",
+    "title": "Get stack stats",
+    "tier": "read",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "GET",
+        "/api/stack-stats"
+      ]
+    ],
+    "description": "Get CPU, memory, network and block I/O totals for each compose stack in an environment, summed over its running containers. Returns stacks heaviest first.",
+    "input_schema_sha256": "84e7b22e84345e942162da2dfd1d10490f974659b709cdeaed833c96d50fb7bf",
+    "output_schema_sha256": "eb67ee98693805d9e362d39aeec37668efb064da962c50f6c893fbfddd6f70a8"
+  },
+  {
     "name": "dockhand_get_system_info",
     "title": "Get system info",
     "tier": "read",

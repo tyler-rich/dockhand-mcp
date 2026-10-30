@@ -1494,3 +1494,20 @@ Classification (maintainer decision on these findings):
 - Keeping `unknown` as `ok: true` (#15): the maintainer chose fail-safe.
 
 **Deferred / follow-ups:** the guardrail's label check is narrower than DockHand's (boolean spellings, `wud.watch`); a container DockHand skips for that reason is now reported `skipped`, not refused up front. Aligning the guardrail is its own change.
+
+### 2026-10-30 — Fix #18: dockhand_get_stack_stats (branch feat/stack-stats)
+**Decision:** One read-tier tool, `dockhand_get_stack_stats`, answers "which stack is using the most CPU or memory?" in one call instead of summing `dockhand_get_all_container_stats` by each entry's `stack`. It reads `GET /api/stack-stats?env` (`env` always sent) and declares that plus `GET /api/environments` for defaulting (F-09, as `dockhand_list_tags`). Registered `Tier.READ` (all three profiles), `title`, `readOnlyHint: true`, the page `outputSchema`, output through the usual redaction pass.
+
+**Output:** the uniform page envelope, `data = {items, count, total, has_more, sort_by}`; each item is DockHand's entry unchanged (`name`, `cpuPercent`, `memoryUsage`, `memoryLimit`, `networkRx`, `networkTx`, `blockRead`, `blockWrite`, `runningCount`). Inputs: `sort_by` (`cpu` default, `memory`, `network` = rx+tx, `block_io` = read+write, `name`), `limit=50 (1..500)`, `offset=0`. Measures sort highest first, `name` ascending, ties by name; sorting happens before paging. A non-array body is treated as an empty list.
+
+**Live structure** (read-only, through the project's own client; structure only): a JSON array, one object per stack with a running container, sorted by `name`, no duplicate names; keys exactly the nine above, all present on every entry; `cpuPercent` is a float or an int (0 for idle stacks), the other numbers ints; `memoryLimit` > 0 on every entry. Both environments the token sees answered. This matches the spec's 200 schema, so the tool is **not experimental**. The fixture (`tests/fixtures/dockhand/stacks/stats.json`) is invented with placeholder names (`stack-a`…) and says so.
+
+**Tests:** failing commit `9b4b4e2` (16 failed across `tests/test_stack_stats.py` and `tests/test_read_tools.py`): populated and empty environments, each `sort_by`, tie-breaking, limit after sorting and bounds, `env` sent (also when defaulted), only the declared endpoints called, all three profiles, metadata. Two existing pins were updated deliberately, not loosened: `test_endpoint_map.py` now says the only operation new in 1.0.55 with a tool is `GET /api/stack-stats` (every other new operation still has none), and `test_env_required.py`'s tool list gains the tool. The read-tier catalogue snapshot gains the tool.
+
+**Docs:** `docs/TOOLS.md` row; README (98 tools, 52 read); `docs/DOCKHAND-SETUP.md` (52 read tools; `containers:view` and `stacks:view`, from the spec's summary); `scripts/smoke-plans/read.json` step using `${env}`.
+
+**Versions:** `uv lock --upgrade` changed nothing in the lockfile; CPython 3.15.2 is the newest stable minor (3.16 is pre-release only), so no bump. `mcp` 2.3.0, `mcp-types` 2.3.0, `httpx` 0.28.1, `httpx2` 2.16.0, `pydantic` 2.14.2, `pydantic-settings` 2.16.2, `starlette` 1.10.0, `uvicorn` 0.54.0, `anyio` 4.15.1; dev `ruff` 0.17.3, `mypy` 2.4.1, `pytest` 9.2.0, `pytest-asyncio` 1.4.1, `respx` 0.23.1. No dependency added; `scripts/deps-current.py` passes.
+
+**Alternatives rejected:** summing container stats server-side (needs the container list and double the calls); returning a bare list (the page envelope carries `total`/`has_more` like the other lists); passing `sort_by` to DockHand (it has no such parameter).
+
+**Deferred / follow-ups:** scheduled actions (#19).
