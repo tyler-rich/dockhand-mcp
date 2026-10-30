@@ -4,6 +4,55 @@ Notable changes per release, generated from the decision log in [`docs/ARCHIVE.m
 by `scripts/release-notes.py changelog` (each entry's decision; the log has the reasoning).
 Versions follow [Semantic Versioning](https://semver.org/).
 
+## [0.3.0] — 2026-10-30
+
+Supported DockHand: 1.0.55. **Python 3.15 is required for source installs**; the Docker image is the recommended install.
+
+- **New tools:** `dockhand_get_stack_stats` (read tier, #18), `dockhand_get_scheduled_actions` (read tier, #19) and `dockhand_set_scheduled_actions` (operator tier, #19).
+- **Schedule allowlist:** `dockhand_run_schedule_now` and `dockhand_toggle_schedule` now accept `container_start` and `container_stop`.
+- **Behaviour change:** `dockhand_update_containers` reports skipped, unverified and unknown containers, and returns `ok: false` when any requested container wasn't confirmed updated (#20).
+- **New `check` problem:** "cannot identify own container", when the server runs in a container whose id it can't find and its profile registers `dockhand_set_scheduled_actions`.
+- **Security:** `opentelemetry-api` ≥ 1.45.1 fixes unbounded tracestate parsing (the repository's first Dependabot alert).
+- **Dependencies and tooling:** mcp 2.3.0 and a dependency refresh; GitHub Actions bumps `astral-sh/setup-uv` 10.3.2, `docker/login-action` 4.7.0 and `anchore/sbom-action` 0.24.3 (#17); the image's `uv` stage 0.13.6 (#22).
+- OAuth is not part of this release.
+
+### 2026-10-28 — DockHand API 1.0.55 and dependency refresh (PR #21, branch chore/dockhand-api-1.0.55)
+
+DockHand API 1.0.55 is the reference spec (`docs/api/dockhand-openapi-1.0.55.json`, git-ignored). The map and `env_required.py` are regenerated from it; the 26 new operations are classified and **no tool is added**. In the same PR: CPython 3.15, a full dependency refresh (which supersedes the open Dependabot uv PR), and the removal of `ToolsOnlyServer`, which mcp 2.3.0 made redundant. Supported DockHand: 1.0.55 (README, D-012, `CLAUDE.md`, `docs/api/README.md`, the bug-report placeholder, DOCKHAND-SETUP's Perm source).
+
+### 2026-10-30 — uv build backend and deps-current coverage (branch chore/uv-toolchain)
+
+`uv_build` moves to `>=0.13.6,<0.14`, and `ci`'s deps-current step gains `scripts/deps-current.py`, which fails when a hand-maintained pin is behind its newest stable release. The spec-dependent tests take the spec path from `DOCKHAND_MCP_SPEC_PATH`.
+
+### 2026-10-30 — Fix #20: update_containers reports skipped and unverified containers (PR #24, branch fix/issue-20-update-skips)
+
+`dockhand_update_containers` reports a container as `succeeded` only when DockHand says `success: true` and nothing in its result says otherwise. The call is `ok: true` only when every requested container `succeeded`; any other outcome is `operation_failed` (existing code), with the counts in the message, e.g. "1 of 2 containers were not confirmed updated: 1 skipped; see data.items". `data.items` and `data.summary` are still returned.
+
+### 2026-10-30 — Fix #18: dockhand_get_stack_stats (branch feat/stack-stats)
+
+One read-tier tool, `dockhand_get_stack_stats`, answers "which stack is using the most CPU or memory?" in one call instead of summing `dockhand_get_all_container_stats` by each entry's `stack`. It reads `GET /api/stack-stats?env` (`env` always sent) and declares that plus `GET /api/environments` for defaulting (F-09, as `dockhand_list_tags`). Registered `Tier.READ` (all three profiles), `title`, `readOnlyHint: true`, the page `outputSchema`, output through the usual redaction pass.
+
+### 2026-10-30 — Fix #19: scheduled container start/stop (branch feat/scheduled-actions)
+
+Two tools for DockHand 1.0.55's scheduled container start and stop. `dockhand_get_scheduled_actions` (read tier, all three profiles) returns a container's schedule. `dockhand_set_scheduled_actions` (operator tier) sets or clears it. `dockhand_run_schedule_now` and `dockhand_toggle_schedule` now also accept `container_start` and `container_stop`. Tools: 100 (53 read, 37 operator, 10 destructive).
+
+### 2026-10-30 — Fix #19 follow-up: an unidentifiable own container is reported (branch feat/scheduled-actions)
+
+**Decision (maintainer, review of the PR above):** when this server cannot find its own container id, the stop protection must not lapse silently. Stops are not refused because of it.
+
+### 2026-10-30 — Release v0.3.0 (branch chore/release-0.3.0)
+
+Version 0.3.0 (`pyproject.toml`, `__version__`, `uv.lock`'s own entry). It ships the changes recorded since the v0.2.0 entry. New tools make this a minor release.
+- **Python 3.15 is required for source installs** (`requires-python`). The Docker image is the recommended install; README and CHANGELOG say so.
+- **Supported DockHand: 1.0.55.**
+- **Three new tools:** `dockhand_get_stack_stats` (read, #18), `dockhand_get_scheduled_actions` (read, #19) and `dockhand_set_scheduled_actions` (operator, #19). Tools: 100 (53 read, 37 operator, 10 destructive).
+- **Schedule allowlist:** `dockhand_run_schedule_now` and `dockhand_toggle_schedule` now accept `container_start` and `container_stop` (#19). Every other non-operator schedule type is still refused.
+- **Behaviour change in `dockhand_update_containers` (#20):** a container is reported `succeeded` only when nothing in DockHand's result says otherwise. Skipped, unverified and unknown containers are reported, and the call is `ok: false` (`operation_failed`) when any requested container was not confirmed updated.
+- **New `check` problem:** with a profile that registers `dockhand_set_scheduled_actions`, running in a container whose id this server cannot find is a `check` problem (outside a container, a warning).
+- **Security fix:** `opentelemetry-api` ≥ 1.45.1 (now 1.45.2) fixes unbounded tracestate parsing (the repository's first Dependabot alert).
+- Also since v0.2.0: mcp 2.3.0 and a dependency refresh (#21); the `ToolsOnlyServer` override removed (#21); Semgrep in `ci` runs on CPython 3.14 (#21); the `uv_build` 0.13 backend and `deps-current` coverage of hand-maintained pins (#23).
+- **Dependabot PRs merged without their own entry:** #17 bumps the GitHub Actions `astral-sh/setup-uv` 10.2.0 → 10.3.2, `docker/login-action` 4.6.0 → 4.7.0 and `anchore/sbom-action` 0.24.2 → 0.24.3 (each pinned by SHA); the release workflow's registry login and SBOM steps run these versions for the first time in this release. #22 bumps the Dockerfile's `astral-sh/uv` stage 0.12.19 → 0.13.6.
+
 ## [0.2.0] — 2026-09-27
 
 Supported DockHand: 1.0.49.
