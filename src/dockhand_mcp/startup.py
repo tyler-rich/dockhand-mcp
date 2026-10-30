@@ -16,6 +16,7 @@ from typing import Any, Final
 from dockhand_mcp.client.dockhand import DockhandClient
 from dockhand_mcp.client.errors import DockhandError
 from dockhand_mcp.config import ConfigError, Settings
+from dockhand_mcp.guardrails import self_container
 
 log = logging.getLogger(__name__)
 
@@ -33,6 +34,41 @@ NOT_CONFIGURED: Final = "not configured"
 PERMISSION_PROBES: Final = ("containers", "stacks", "images", "volumes", "networks")
 # A read-tier list, with stopped containers (`all`), for the shared-daemon comparison.
 CONTAINERS: Final = "/api/containers"
+# The tool whose stop refusal needs this server's own container id (#19).
+SCHEDULE_TOOL: Final = "dockhand_set_scheduled_actions"
+UNIDENTIFIED: Final = "cannot identify own container; scheduled stops cannot be refused for it"
+UNIDENTIFIED_IN_CONTAINER: Final = (
+    f"{UNIDENTIFIED} (this server appears to run in a container, but neither the /etc/hostname "
+    "mount in /proc/self/mountinfo nor the hostname gives its id: run it under Docker or Podman "
+    "and don't override the container's hostname)"
+)
+UNIDENTIFIED_MAYBE: Final = (
+    f"{UNIDENTIFIED}, if this server runs in a container (no container was detected: neither "
+    "/proc/self/mountinfo nor the hostname gives an id)"
+)
+
+
+def own_container_findings(settings: Settings) -> tuple[list[str], list[str]]:
+    """(problems, warnings) when this server's container id is unknown and the profile registers
+    the tool that refuses a scheduled stop of it. Nothing is refused because of it."""
+    import dockhand_mcp.tools  # noqa: F401 - registers every tool
+    from dockhand_mcp.tools.registry import REGISTRY
+
+    disabled = frozenset(settings.disable_tools)
+    names = {t.name for t in REGISTRY.tools_for_profile(settings.profile, disabled)}
+    found = self_container.identify()
+    if SCHEDULE_TOOL not in names or found.ids:
+        return [], []
+    if found.in_container:
+        return [UNIDENTIFIED_IN_CONTAINER], []
+    return [], [UNIDENTIFIED_MAYBE]
+
+
+def warn_if_unidentified(settings: Settings) -> None:
+    """At startup: a WARN when a scheduled stop of this server's own container cannot be refused."""
+    problems, warnings = own_container_findings(settings)
+    for message in problems + warnings:
+        log.warning(message)
 
 
 async def auth_enabled(client: DockhandClient) -> bool:
@@ -141,6 +177,7 @@ async def shared_daemon_warnings(client: DockhandClient, environments: Sequence[
 
 async def run_checks(settings: Settings, client: DockhandClient) -> DockhandReport:
     report = DockhandReport()
+    report.problems, report.warnings = own_container_findings(settings)
     try:
         api = await client.get_json("/api/health", read_timeout=TIMEOUT_S)
     except DockhandError as e:

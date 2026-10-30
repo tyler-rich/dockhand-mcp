@@ -1,0 +1,13 @@
+{
+  "_comment": "Invented from the DockHand 1.0.55 spec 200 schema and example of GET/PUT /api/scheduled-actions/{containerName}; not a recorded response.",
+  "body": {
+    "startAt": "07:00",
+    "stopAt": "0 23 * * 1-5",
+    "enabled": true,
+    "source": "ui",
+    "labelErrors": [],
+    "systemContainer": false,
+    "lastStarted": "2026-01-02T07:00:00.000Z",
+    "lastStopped": null
+  }
+}

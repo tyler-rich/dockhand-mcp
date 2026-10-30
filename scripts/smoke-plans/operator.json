@@ -17,6 +17,13 @@
   {"tool": "dockhand_list_stack_deploys", "args": {"environment_id": "${test_env}", "stack": "${smoke_stack}", "limit": 5}, "expect": {"ok": true, "not_equals": {"data.items": []}}, "save": {"run_id": "data.items.0.id"}},
   {"tool": "dockhand_get_stack_deploy_log", "args": {"stack": "${smoke_stack}", "run_id": "${run_id}", "max_bytes": 8192}, "expect": {"ok": true}},
 
+  {"tool": "dockhand_set_scheduled_actions", "args": {"environment_id": "${test_env}", "container": "${smoke_container}", "start": "07:00", "stop": "0 23 * * 1-5"}, "expect": {"ok": true, "verified": true}},
+  {"tool": "dockhand_get_scheduled_actions", "args": {"environment_id": "${test_env}", "container": "${smoke_container}"}, "expect": {"ok": true, "equals": {"data.schedule.startAt": "07:00", "data.schedule.stopAt": "0 23 * * 1-5", "data.schedule.source": "ui"}}},
+  {"tool": "dockhand_set_scheduled_actions", "args": {"environment_id": "${test_env}", "container": "${smoke_container}", "stop": "25:00"}, "expect": {"ok": false, "error.code": "validation_error"}},
+  {"tool": "dockhand_get_scheduled_actions", "args": {"environment_id": "${test_env}", "container": "${smoke_container}"}, "expect": {"ok": true, "equals": {"data.schedule.stopAt": "0 23 * * 1-5"}}},
+  {"tool": "dockhand_set_scheduled_actions", "args": {"environment_id": "${test_env}", "container": "${smoke_container}"}, "expect": {"ok": true, "verified": true}},
+  {"tool": "dockhand_get_scheduled_actions", "args": {"environment_id": "${test_env}", "container": "${smoke_container}"}, "expect": {"ok": true, "equals": {"data.schedule.startAt": null, "data.schedule.stopAt": null}}},
+
   {"tool": "dockhand_restart_stack", "args": {"environment_id": "${test_env}", "stack": "${smoke_stack}", "mode": "recreate", "timeout_seconds": 240}, "expect": {"ok": true}},
   {"tool": "dockhand_stop_stack", "args": {"environment_id": "${test_env}", "stack": "${smoke_stack}", "timeout_seconds": 120}, "expect": {"ok": true}}
 ]

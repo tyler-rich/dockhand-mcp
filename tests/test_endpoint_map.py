@@ -250,7 +250,15 @@ def test_operations_excluded_in_1_0_55_are_unreachable(
 
 @pytest.mark.parametrize("endpoint", list(NEW_IN_1_0_55))
 def test_only_the_adopted_operations_new_in_1_0_55_have_a_tool(endpoint: tuple[str, str]) -> None:
-    adopted = {("GET", "/api/stack-stats"): {"dockhand_get_stack_stats"}}  # #18
+    adopted = {
+        ("GET", "/api/stack-stats"): {"dockhand_get_stack_stats"},  # #18
+        # #19: the read tool, and the set tool's pre-write check and read-back.
+        ("GET", "/api/scheduled-actions/{containerName}"): {
+            "dockhand_get_scheduled_actions",
+            "dockhand_set_scheduled_actions",
+        },
+        ("PUT", "/api/scheduled-actions/{containerName}"): {"dockhand_set_scheduled_actions"},
+    }
     callers = {tool.name for tool in REGISTRY.all() if endpoint in tool.endpoints}
     assert callers == adopted.get(endpoint, set())
 
