@@ -1464,7 +1464,7 @@ No server code changed in this PR.
 
 **Alternatives rejected:** a `setup-uv` `version:` pin (nothing to pin; it would only add a pin to watch); a Dependabot-only approach for the Dockerfile stage (it does not see `uv_build` or the build constraints); an `.env`-style exemption for the variable in `clean_env` (it would leak into the config tests).
 
-### 2026-10-30 — Fix #20: update_containers reports skipped and unverified containers (branch fix/issue-20-update-skips)
+### 2026-10-30 — Fix #20: update_containers reports skipped and unverified containers (PR #24, branch fix/issue-20-update-skips)
 **Decision:** `dockhand_update_containers` reports a container as `succeeded` only when DockHand says `success: true` and nothing in its result says otherwise. The call is `ok: true` only when every requested container `succeeded`; any other outcome is `operation_failed` (existing code), with the counts in the message, e.g. "1 of 2 containers were not confirmed updated: 1 skipped; see data.items". `data.items` and `data.summary` are still returned.
 
 **Status classification and its source.** The spec (1.0.55) types `warnings: [{status, message}]` with no enumeration. DockHand's public source (github.com/Finsys/dockhand, tag v1.0.55; read only, nothing copied; BUSL) shows:
