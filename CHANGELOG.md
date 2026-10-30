@@ -13,7 +13,7 @@ Supported DockHand: 1.0.55. **Python 3.15 is required for source installs**; the
 - **Behaviour change:** `dockhand_update_containers` reports skipped, unverified and unknown containers, and returns `ok: false` when any requested container wasn't confirmed updated (#20).
 - **New `check` problem:** "cannot identify own container", when the server runs in a container whose id it can't find and its profile registers `dockhand_set_scheduled_actions`.
 - **Security:** `opentelemetry-api` ≥ 1.45.1 fixes unbounded tracestate parsing (the repository's first Dependabot alert).
-- **Dependencies and tooling:** mcp 2.3.0 and a dependency refresh; GitHub Actions bumps `astral-sh/setup-uv` 10.3.2, `docker/login-action` 4.7.0 and `anchore/sbom-action` 0.24.3 (#17); the image's `uv` stage 0.13.6 (#22).
+- **Dependencies and tooling:** mcp 2.3.0 and a dependency refresh; GitHub Actions bumps `astral-sh/setup-uv` 10.3.2, `docker/login-action` 4.7.0 and `anchore/sbom-action` 0.24.3 (#17); the image's `uv` stage 0.13.6 (#22); release tooling OSV-Scanner v2.7.0, cosign v3.1.4 and syft v1.55.0 (#27).
 - OAuth is not part of this release.
 
 ### 2026-10-28 — DockHand API 1.0.55 and dependency refresh (PR #21, branch chore/dockhand-api-1.0.55)
@@ -40,6 +40,13 @@ Two tools for DockHand 1.0.55's scheduled container start and stop. `dockhand_ge
 
 **Decision (maintainer, review of the PR above):** when this server cannot find its own container id, the stop protection must not lapse silently. Stops are not refused because of it.
 
+### 2026-10-30 — Release-tool pins and their deps-current coverage (branch chore/release-tool-pins)
+
+The tools the workflows download move to their newest stable releases, and `scripts/deps-current.py` now fails when any of them falls behind.
+- `OSV_SCANNER_VERSION` v2.6.0 → **v2.7.0** in `ci.yml`, `release.yml` and `image-scan.yml`. `OSV_SCANNER_SHA256` is the `osv-scanner_linux_amd64` line of v2.7.0's own `osv-scanner_SHA256SUMS`, fetched for this change; the downloaded binary hashes to it.
+- `COSIGN_VERSION` v3.1.3 → **v3.1.4** and `SYFT_VERSION` v1.52.0 → **v1.55.0** in `release.yml`. They are installed by `sigstore/cosign-installer` and `anchore/sbom-action`, which take a version only; both actions are already at their newest releases.
+- `GITLEAKS_VERSION` 8.30.1 is already the newest release.
+
 ### 2026-10-30 — Release v0.3.0 (branch chore/release-0.3.0)
 
 Version 0.3.0 (`pyproject.toml`, `__version__`, `uv.lock`'s own entry). It ships the changes recorded since the v0.2.0 entry. New tools make this a minor release.
@@ -50,7 +57,7 @@ Version 0.3.0 (`pyproject.toml`, `__version__`, `uv.lock`'s own entry). It ships
 - **Behaviour change in `dockhand_update_containers` (#20):** a container is reported `succeeded` only when nothing in DockHand's result says otherwise. Skipped, unverified and unknown containers are reported, and the call is `ok: false` (`operation_failed`) when any requested container was not confirmed updated.
 - **New `check` problem:** with a profile that registers `dockhand_set_scheduled_actions`, running in a container whose id this server cannot find is a `check` problem (outside a container, a warning).
 - **Security fix:** `opentelemetry-api` ≥ 1.45.1 (now 1.45.2) fixes unbounded tracestate parsing (the repository's first Dependabot alert).
-- Also since v0.2.0: mcp 2.3.0 and a dependency refresh (#21); the `ToolsOnlyServer` override removed (#21); Semgrep in `ci` runs on CPython 3.14 (#21); the `uv_build` 0.13 backend and `deps-current` coverage of hand-maintained pins (#23).
+- Also since v0.2.0: mcp 2.3.0 and a dependency refresh (#21); the `ToolsOnlyServer` override removed (#21); Semgrep in `ci` runs on CPython 3.14 (#21); the `uv_build` 0.13 backend and `deps-current` coverage of hand-maintained pins (#23); the release tools OSV-Scanner v2.7.0, cosign v3.1.4 and syft v1.55.0, with `deps-current` now checking them and gitleaks (#27).
 - **Dependabot PRs merged without their own entry:** #17 bumps the GitHub Actions `astral-sh/setup-uv` 10.2.0 → 10.3.2, `docker/login-action` 4.6.0 → 4.7.0 and `anchore/sbom-action` 0.24.2 → 0.24.3 (each pinned by SHA); the release workflow's registry login and SBOM steps run these versions for the first time in this release. #22 bumps the Dockerfile's `astral-sh/uv` stage 0.12.19 → 0.13.6.
 
 ## [0.2.0] — 2026-09-27
