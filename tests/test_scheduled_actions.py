@@ -6,16 +6,20 @@
 The set tool's rails all run before any write: the container is resolved in the requested
 environment; the times are `HH:MM` or a five-field cron expression (the spec's two forms); a stop
 is refused for DockHand's own container (DockHand reports it as `systemContainer`, as it does a
-Hawser agent) and for the container this server runs in. After the PUT the schedule is read back.
+Hawser agent) and for the container this server runs in; and a container that another
+environment also lists (one Docker daemon serving several environments) is refused unless the
+requested environment tracks its stack. After the PUT the schedule is read back.
 
 The fixtures are invented (tests/fixtures/dockhand/scheduled-actions/).
 """
 
 import importlib
 import json
+from collections.abc import Callable
 from types import ModuleType
 from typing import Any, get_args
 
+import httpx
 import pytest
 import respx
 from conftest import ENV, IDS, SetEnv, load_fixture, mcp_client
@@ -42,6 +46,7 @@ LIST = ("GET", "/api/containers")
 SA = ("GET", "/api/scheduled-actions/{containerName}")
 SA_PUT = ("PUT", "/api/scheduled-actions/{containerName}")
 ENVIRONMENTS = ("GET", "/api/environments")
+STACKS = ("GET", "/api/stacks")
 LEAK = f"bad label {TOKEN} from https://{URL_USER}:{URL_PASS}@registry.example.test"
 
 
@@ -58,14 +63,20 @@ def containers() -> tuple[str, str, Any]:
     return ("GET", "/api/containers", load_fixture("containers", "list"))
 
 
+def owned() -> list[tuple[str, str, Any]]:
+    """The container list and the stack list, where `web`'s stack `shop` is tracked."""
+    return [containers(), ("GET", "/api/stacks", load_fixture("stacks", "list"))]
+
+
 def schedule(**fields: Any) -> dict[str, Any]:
     return {**fx("empty"), **fields}
 
 
 def set_routes(before: Any, after: Any, put: Any | None = None) -> list[tuple[str, str, Any]]:
-    """The container list, the schedule GET (before the write, then the read-back) and the PUT."""
+    """The container and stack lists, the schedule GET (before the write, then the read-back) and
+    the PUT."""
     return [
-        containers(),
+        *owned(),
         ("GET", PATH, Seq((before, after))),
         ("PUT", PATH, after if put is None else put),
     ]
@@ -98,7 +109,7 @@ def own_container(monkeypatch: pytest.MonkeyPatch) -> Any:
 
 async def test_get_populated(dockhand: respx.MockRouter, base_env: SetEnv) -> None:
     base_env()
-    mount_read = [containers(), ("GET", PATH, fx("set"))]
+    mount_read = [*owned(), ("GET", PATH, fx("set"))]
     mount(dockhand, mount_read)
     env, _, _ = await read_call(GET_TOOL, {**E, "container": "web"})
     assert env.ok is True, env.error
@@ -113,7 +124,7 @@ async def test_get_populated(dockhand: respx.MockRouter, base_env: SetEnv) -> No
 
 async def test_get_by_id_uses_the_name(dockhand: respx.MockRouter, base_env: SetEnv) -> None:
     base_env()
-    mount(dockhand, [containers(), ("GET", PATH, fx("set"))])
+    mount(dockhand, [*owned(), ("GET", PATH, fx("set"))])
     env, _, _ = await read_call(GET_TOOL, {**E, "container": WEB[:12]})
     assert env.ok is True, env.error
     assert env.data["container"]["name"] == "web"
@@ -121,7 +132,7 @@ async def test_get_by_id_uses_the_name(dockhand: respx.MockRouter, base_env: Set
 
 async def test_get_empty(dockhand: respx.MockRouter, base_env: SetEnv) -> None:
     base_env()
-    mount(dockhand, [containers(), ("GET", PATH, fx("empty"))])
+    mount(dockhand, [*owned(), ("GET", PATH, fx("empty"))])
     env, _, _ = await read_call(GET_TOOL, {**E, "container": "web"})
     assert env.ok is True, env.error
     assert env.data["schedule"]["startAt"] is None
@@ -141,16 +152,16 @@ async def test_get_calls_only_declared_endpoints(
     dockhand: respx.MockRouter, base_env: SetEnv
 ) -> None:
     base_env()
-    mount(dockhand, [containers(), ("GET", PATH, fx("set"))])
+    mount(dockhand, [*owned(), ("GET", PATH, fx("set"))])
     called = ReadCalled()
     await read_call(GET_TOOL, {**E, "container": "web"}, called)
-    assert set(called.endpoints) == {LIST, SA}
-    assert declared(GET_TOOL) == {ENVIRONMENTS, LIST, SA}
+    assert set(called.endpoints) == {LIST, STACKS, SA}
+    assert declared(GET_TOOL) == {ENVIRONMENTS, LIST, STACKS, SA}
 
 
 async def test_get_redacts_dockhand_free_text(dockhand: respx.MockRouter, base_env: SetEnv) -> None:
     base_env()
-    mount(dockhand, [containers(), ("GET", PATH, schedule(labelErrors=[LEAK]))])
+    mount(dockhand, [*owned(), ("GET", PATH, schedule(labelErrors=[LEAK]))])
     env, content, _ = await read_call(GET_TOOL, {**E, "container": "web"})
     assert env.ok is True, env.error
     text = json.dumps(content)
@@ -362,8 +373,8 @@ async def test_set_calls_only_declared_endpoints(
     mount(dockhand, set_routes(fx("empty"), fx("set")))
     called = Called()
     await operator_call(SET_TOOL, ARGS, called)
-    assert set(called.endpoints) == {LIST, SA, SA_PUT}
-    assert declared(SET_TOOL) == {ENVIRONMENTS, LIST, SA, SA_PUT}
+    assert set(called.endpoints) == {LIST, STACKS, SA, SA_PUT}
+    assert declared(SET_TOOL) == {ENVIRONMENTS, LIST, STACKS, SA, SA_PUT}
 
 
 @pytest.mark.parametrize(("profile", "visible"), [("read-only", False), ("operator", True)])
@@ -506,3 +517,254 @@ async def test_other_types_still_refused(
 def test_module_registers_both_tools() -> None:
     names = {t.name for t in REGISTRY.all()}
     assert {GET_TOOL, SET_TOOL} <= names
+
+
+# --- one Docker daemon, several environments ----------------------------------------------------
+# Rule (maintainer decision): (1) the container's compose project is a stack tracked in the
+# requested environment → allowed; (2) otherwise, no other environment lists the container (by id)
+# → allowed; (3) otherwise → guardrail_blocked, naming the other environments and the one tracking
+# its stack, if any; (4) a stack or container list that cannot be read → refused. The read tool
+# answers in every case, with a warning where (3) or (4) would refuse.
+
+OTHER = 8
+SHARED = load_fixture("containers", "list")  # web and db (stack shop), worker (standalone)
+
+
+def item(name: str, project: str | None) -> dict[str, Any]:
+    found = next(c for c in SHARED if c["name"] == name)
+    labels = {} if project is None else {"com.docker.compose.project": project}
+    return {**found, "labels": labels}
+
+
+def by_env(bodies: dict[int, Any]) -> Callable[[httpx.Request], httpx.Response]:
+    """A route answer per `env` query parameter; an int body is an HTTP status."""
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        body = bodies[int(request.url.params["env"])]
+        if isinstance(body, int):
+            return httpx.Response(body, json={"error": "Internal error"})
+        return httpx.Response(200, json=body)
+
+    return answer
+
+
+def environments(*ids: int) -> list[dict[str, Any]]:
+    return [{"id": i, "name": f"env-{i}"} for i in ids]
+
+
+def stacks(*tracked: str, untracked: tuple[str, ...] = ()) -> list[dict[str, Any]]:
+    return [
+        *({"name": n, "sourceType": "internal", "status": "running"} for n in tracked),
+        *({"name": n, "status": "running"} for n in untracked),
+    ]
+
+
+def daemon(
+    dockhand: respx.MockRouter,
+    *,
+    containers_by_env: dict[int, Any],
+    stacks_by_env: dict[int, Any],
+    envs: Any,
+    name: str = "web",
+) -> None:
+    """Mock a deployment: per-environment container and stack lists, the environment list (or an
+    HTTP status), and `name`'s schedule (none before the write, a stop at 23:00 after)."""
+    dockhand.get("/api/containers").mock(side_effect=by_env(containers_by_env))
+    dockhand.get("/api/stacks").mock(side_effect=by_env(stacks_by_env))
+    if isinstance(envs, int):
+        dockhand.get("/api/environments").respond(envs, json={"error": "Internal error"})
+    else:
+        dockhand.get("/api/environments").respond(200, json=envs)
+    path = f"/api/scheduled-actions/{name}"
+    after = schedule(stopAt="23:00")
+    answers = [httpx.Response(200, json=fx("empty")), httpx.Response(200, json=after)]
+    dockhand.get(path).mock(side_effect=answers)
+    dockhand.put(path).respond(200, json=after)
+
+
+def stop(name: str = "web") -> dict[str, Any]:
+    return {**E, "container": name, "stop": "23:00"}
+
+
+def listed_envs(dockhand: respx.MockRouter) -> list[int]:
+    return sorted(
+        int(c.request.url.params["env"])
+        for c in dockhand.calls
+        if c.request.url.path == "/api/containers"
+    )
+
+
+async def test_rule1_tracked_here_is_allowed_without_reading_other_environments(
+    dockhand: respx.MockRouter, operator_env: SetEnv
+) -> None:
+    operator_env()
+    daemon(
+        dockhand,
+        containers_by_env={ENV: SHARED, OTHER: SHARED},
+        stacks_by_env={ENV: stacks("shop"), OTHER: stacks(untracked=("shop",))},
+        envs=environments(ENV, OTHER),
+    )
+    env, _ = await operator_call(SET_TOOL, stop())
+    assert env.ok is True, env.error
+    assert listed_envs(dockhand) == [ENV]
+    assert not [c for c in dockhand.calls if c.request.url.path == "/api/environments"]
+
+
+@pytest.mark.parametrize("name", ["web", "worker"])
+async def test_rule2_single_environment_untracked_and_standalone_are_allowed(
+    name: str, dockhand: respx.MockRouter, operator_env: SetEnv
+) -> None:
+    operator_env()
+    daemon(
+        dockhand,
+        containers_by_env={ENV: [item("web", "adhoc"), item("worker", None)]},
+        stacks_by_env={ENV: stacks("shop")},
+        envs=environments(ENV),
+        name=name,
+    )
+    env, _ = await operator_call(SET_TOOL, stop(name))
+    assert env.ok is True, env.error
+    assert len(writes(dockhand)) == 1
+
+
+async def test_rule2_another_environment_not_listing_it_is_allowed(
+    dockhand: respx.MockRouter, operator_env: SetEnv
+) -> None:
+    operator_env()
+    daemon(
+        dockhand,
+        containers_by_env={ENV: [item("worker", None)], OTHER: [item("db", None)]},
+        stacks_by_env={ENV: stacks()},
+        envs=environments(ENV, OTHER),
+        name="worker",
+    )
+    env, _ = await operator_call(SET_TOOL, stop("worker"))
+    assert env.ok is True, env.error
+    assert listed_envs(dockhand) == [ENV, OTHER]
+
+
+@pytest.mark.parametrize(
+    ("name", "here", "there", "expected"),
+    [
+        ("web", stacks(untracked=("shop",)), stacks("shop"), "tracked in environment 8"),
+        ("web", stacks(untracked=("shop",)), stacks(untracked=("shop",)), "not tracked in"),
+        ("worker", stacks(), stacks(), "belongs to no stack"),
+    ],
+    ids=["tracked-elsewhere", "tracked-nowhere", "standalone"],
+)
+@pytest.mark.parametrize("times", [{"stop": "23:00"}, {"start": "07:00"}, {}], ids=str)
+async def test_rule3_listed_elsewhere_and_not_tracked_here_is_refused(
+    name: str,
+    here: Any,
+    there: Any,
+    expected: str,
+    times: dict[str, str],
+    dockhand: respx.MockRouter,
+    operator_env: SetEnv,
+) -> None:
+    operator_env()
+    daemon(
+        dockhand,
+        containers_by_env={ENV: SHARED, OTHER: SHARED},
+        stacks_by_env={ENV: here, OTHER: there},
+        envs=environments(ENV, OTHER),
+        name=name,
+    )
+    env, _ = await operator_call(SET_TOOL, {**E, "container": name, **times})
+    assert env.error is not None
+    assert env.error.code == "guardrail_blocked"
+    assert "environment 8" in env.error.message
+    assert expected in env.error.message
+    assert writes(dockhand) == []
+
+
+@pytest.mark.parametrize(
+    ("containers_by_env", "stacks_by_env", "envs"),
+    [
+        ({ENV: SHARED, OTHER: SHARED}, {ENV: 500}, environments(ENV, OTHER)),
+        ({ENV: SHARED, OTHER: SHARED}, {ENV: stacks()}, 500),
+        ({ENV: SHARED, OTHER: 500}, {ENV: stacks()}, environments(ENV, OTHER)),
+    ],
+    ids=["stack-list", "environment-list", "other-container-list"],
+)
+async def test_rule4_an_unreadable_list_refuses(
+    containers_by_env: dict[int, Any],
+    stacks_by_env: dict[int, Any],
+    envs: Any,
+    dockhand: respx.MockRouter,
+    operator_env: SetEnv,
+) -> None:
+    operator_env()
+    daemon(
+        dockhand,
+        containers_by_env=containers_by_env,
+        stacks_by_env=stacks_by_env,
+        envs=envs,
+        name="worker",
+    )
+    env, _ = await operator_call(SET_TOOL, stop("worker"))
+    assert env.error is not None
+    assert env.error.code == "guardrail_blocked"
+    assert "nothing was done" in env.error.message.lower()
+    assert writes(dockhand) == []
+
+
+async def test_read_tool_warns_when_another_environment_lists_it(
+    dockhand: respx.MockRouter, base_env: SetEnv
+) -> None:
+    base_env()
+    daemon(
+        dockhand,
+        containers_by_env={ENV: SHARED, OTHER: SHARED},
+        stacks_by_env={ENV: stacks(untracked=("shop",)), OTHER: stacks("shop")},
+        envs=environments(ENV, OTHER),
+    )
+    env, _, _ = await read_call(GET_TOOL, {**E, "container": "web"})
+    assert env.ok is True, env.error
+    assert env.warnings is not None
+    assert any("environment 8" in w for w in env.warnings)
+
+
+async def test_read_tool_warns_when_a_list_cannot_be_read(
+    dockhand: respx.MockRouter, base_env: SetEnv
+) -> None:
+    base_env()
+    daemon(
+        dockhand,
+        containers_by_env={ENV: SHARED, OTHER: 500},
+        stacks_by_env={ENV: stacks()},
+        envs=environments(ENV, OTHER),
+        name="worker",
+    )
+    env, _, _ = await read_call(GET_TOOL, {**E, "container": "worker"})
+    assert env.ok is True, env.error
+    assert env.warnings is not None
+    assert any("could not" in w for w in env.warnings)
+
+
+@pytest.mark.parametrize(
+    ("containers_by_env", "stacks_by_env", "name"),
+    [
+        ({ENV: SHARED, OTHER: SHARED}, {ENV: stacks("shop")}, "web"),
+        ({ENV: SHARED, OTHER: []}, {ENV: stacks()}, "worker"),
+    ],
+    ids=["rule1", "rule2"],
+)
+async def test_read_tool_has_no_warning_when_the_set_tool_would_allow(
+    containers_by_env: dict[int, Any],
+    stacks_by_env: dict[int, Any],
+    name: str,
+    dockhand: respx.MockRouter,
+    base_env: SetEnv,
+) -> None:
+    base_env()
+    daemon(
+        dockhand,
+        containers_by_env=containers_by_env,
+        stacks_by_env=stacks_by_env,
+        envs=environments(ENV, OTHER),
+        name=name,
+    )
+    env, _, _ = await read_call(GET_TOOL, {**E, "container": name})
+    assert env.ok is True, env.error
+    assert env.warnings is None

@@ -187,6 +187,7 @@ CASES: dict[str, tuple[dict[str, Any], list[Route]]] = {
         {**E, "container": "web", "start": "07:00", "stop": "0 23 * * 1-5"},
         [
             containers(),
+            stack_list(),
             ("GET", "/api/scheduled-actions/web", fx("scheduled-actions", "set")),
             ("PUT", "/api/scheduled-actions/web", fx("scheduled-actions", "set")),
         ],

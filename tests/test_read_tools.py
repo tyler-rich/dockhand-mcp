@@ -203,7 +203,11 @@ CASES: dict[str, tuple[dict[str, Any], list[Route]]] = {
     "dockhand_get_auto_update_settings": (E, [("GET", "/api/auto-update", fx("updates", "all"))]),
     "dockhand_get_scheduled_actions": (
         {**E, "container": "web"},
-        [containers(), ("GET", "/api/scheduled-actions/web", fx("scheduled-actions", "set"))],
+        [
+            containers(),
+            ("GET", "/api/stacks", fx("stacks", "list")),
+            ("GET", "/api/scheduled-actions/web", fx("scheduled-actions", "set")),
+        ],
     ),
     "dockhand_list_vulnerabilities": (
         {**E, "limit": 2},
