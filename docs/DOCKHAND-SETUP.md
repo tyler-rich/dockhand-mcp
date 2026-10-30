@@ -34,7 +34,7 @@ elsewhere, so check in DockHand's role editor which permission gates that area, 
 
 Each profile includes everything in the profiles above it.
 
-**`read-only`** (52 read tools)
+**`read-only`** (53 read tools)
 
 | Permission | Needed for | Source |
 |---|---|---|
@@ -52,11 +52,11 @@ Each profile includes everything in the profiles above it.
 | images (view) | Image list, history, scan results, vulnerabilities | **verify** |
 | networks (view) | Network list and inspect | **verify** |
 | `schedules:view` | Schedule list, auto-update settings | spec |
-| `schedules:view` | Schedule executions | **verify** |
+| `schedules:view` | Schedule executions; `dockhand_get_scheduled_actions` (its 403 names no permission) | **verify** |
 | system/host (view) | Host info, system info, disk usage, job status | **verify** |
 | audit (view) | `dockhand_get_audit_log` (the audit log is Enterprise-only) | **verify** |
 
-**`operator`** (adds 36 operator tools)
+**`operator`** (adds 37 operator tools)
 
 | Permission | Needed for | Source |
 |---|---|---|
@@ -68,6 +68,7 @@ Each profile includes everything in the profiles above it.
 | `volumes:create` | Create and clone volumes | spec |
 | `git:edit` | Git repository sync and deploy | spec |
 | `settings:edit` | Toggling a *system* schedule only. Leave it out if you don't need that. | spec |
+| `schedules:edit`, `containers:start`, `containers:stop` | `dockhand_set_scheduled_actions` (needs all three). Running a `container_start` or `container_stop` schedule also needs `containers:start` / `containers:stop`; switching one on with `dockhand_toggle_schedule` needs both. | spec |
 | `containers:edit` | Container start, stop, restart, pause, unpause, rename, batch operations, image updates, auto-update settings | **verify** |
 | stacks (stop) | Stack start and stop (`POST …/start`, `…/stop` state no permission) | **verify** |
 | images (edit) | Image pull, tag, scan, scan-all | **verify** |
