@@ -1511,3 +1511,83 @@ Classification (maintainer decision on these findings):
 **Alternatives rejected:** summing container stats server-side (needs the container list and double the calls); returning a bare list (the page envelope carries `total`/`has_more` like the other lists); passing `sort_by` to DockHand (it has no such parameter).
 
 **Deferred / follow-ups:** scheduled actions (#19).
+
+### 2026-10-30 — Fix #19: scheduled container start/stop (branch feat/scheduled-actions)
+**Decision:** Two tools for DockHand 1.0.55's scheduled container start and stop. `dockhand_get_scheduled_actions` (read tier, all three profiles) returns a container's schedule. `dockhand_set_scheduled_actions` (operator tier) sets or clears it. `dockhand_run_schedule_now` and `dockhand_toggle_schedule` now also accept `container_start` and `container_stop`. Tools: 100 (53 read, 37 operator, 10 destructive).
+
+**Verified at the source** (spec 1.0.55; DockHand's public source at tag v1.0.55 was read for semantics the spec leaves open. Nothing was copied; BUSL.)
+- *Format:* each time is `HH:MM` (every day) or a five-field cron expression (the PUT summary). DockHand's `actionTimeToCron` accepts `H:MM` or `HH:MM` with hour ≤ 23 and minute ≤ 59, or exactly five whitespace-separated fields that croner parses.
+  - The tool validates `^(?:(?:[01]?[0-9]|2[0-3]):[0-5][0-9]|F( F){4})$`, where F is `[0-9A-Za-z*?/,#-]+`, with at most 100 characters. Anything else is `validation_error` and nothing is sent.
+  - Cron field *values* (e.g. minute 99) are DockHand's check: HTTP 400, surfaced as `dockhand_http_error`.
+- *PUT semantics:* the body `{startAt, stopAt}` replaces both times; an empty or missing one is none. Both empty deletes the row. `enabled` sent → set; omitted → an existing row keeps its state. The tool always sends both keys (an omitted input is `""`) and never sends `enabled`.
+- *Refusals DockHand makes itself:* 403 for a system container, 404 for an unknown container, 409 when `dockhand.start.at`/`dockhand.stop.at` labels set the schedule (`source: label`).
+- *Response:* `{startAt, stopAt, enabled, source, labelErrors, systemContainer, lastStarted, lastStopped}`; it is returned as `data.schedule` unchanged.
+- *`GET /api/schedules`:* a schedule appears as one row per time, typed `container_start` / `container_stop`. Both rows share the stored row's `id`, which is the `schedule_id` for run and toggle. `entityName` is the container, `environmentId` the environment it was set through, `cronExpression` the time (an `HH:MM` becomes `M H * * *`).
+- *Run/toggle* (spec notes): toggling either type switches both times; run and toggle-on also need containers start/stop.
+
+**Allowlist change, and why it does not widen destructive reach.** S3a's restriction keeps schedule types that delete data or records out of the operator tier. `container_start` / `container_stop` start or stop the one container the row names. The container lifecycle tools already do that in this tier. The `Literal` types gain exactly those two values; `test_allowlists_are_exactly_the_operator_types` pins the sets. `image_prune`, `repo_prune`, the backup family (`backup`, `repo_check`, `repo_verify`), `system_cleanup` and `deploy_log_reconcile` are still refused with no request. S10's 1.0.55 regression guard (`test_api_1_0_55.py`) no longer lists the two container types. It now guards `deploy_log_reconcile`, `image_prune` and `repo_prune`; `test_scheduled_actions.py` covers every refused type for both tools.
+
+**Safety rails on the set tool, all before any write:**
+1. *Resolution:* one `GET /api/containers?env&all=true` resolves the name or id (`names.container_from`, the resolver's matching on a list already read). An unknown container is `not_found` with no write.
+2. *Format:* as above.
+3. *Shared daemon* (maintainer decision during the session, after the STOP below):
+   - The container's compose project is a stack tracked in the requested environment → allowed.
+   - Otherwise, no other environment lists the container's id → allowed. On a deployment with one daemon per environment, that covers every untracked compose container and every standalone one.
+   - Otherwise → `guardrail_blocked`, naming the other environments by id and the environment tracking its stack, if any.
+   - Any stack, environment or container list that cannot be read → `guardrail_blocked` (fail closed).
+   - Reads: the environment's stack list; then, unless it tracks the stack, `GET /api/environments` and one container list per other environment; and, only to name the tracking environment in a refusal, those environments' stack lists. No inspects.
+   - This applies to every set (start, stop, or clear).
+   - The read tool runs the same check and always answers, with the reason as a warning where the set tool would refuse.
+4. *Self-protection, for a `stop`:*
+   - **DockHand's container:** refused (`guardrail_blocked`) when DockHand's GET reports `systemContainer: true`. DockHand computes that from the image name (`isSystemContainer`: DockHand's own image or a Hawser agent's). It is the same signal DockHand's PUT refuses with 403, and it covers Hawser agents too, since stopping one cuts off its environment.
+   - **This server's container:** `guardrails/self_container.py` reads this process's own `/proc/self/mountinfo` (capped at 1 MiB) and takes the 64-hex id from the root of the mount whose mount point is `/etc/hostname` (Docker, rootless Docker: `…/containers/<id>/hostname`; Podman: `…/overlay-containers/<id>/userdata/hostname`). Only that mount counts: a Docker host's own table lists every container's `…/mounts/shm`. If the table has none, a hostname of exactly 12 lowercase hex characters is taken as the short id. Ids match by prefix in either direction.
+   - Outside a container, both checks find nothing and nothing is refused.
+   - This reads no socket and no host path, and runs no subprocess (D-003).
+   - Tests run as if outside any container (an autouse fixture in `conftest.py`).
+   - A start, or a clear, of either container is not refused here; DockHand refuses any write to a system container itself.
+5. *Read-back:* after the PUT, a GET; the two times are compared, with an empty string and `null` both read as none. A mismatch → `verification_failed`, `verified: false`, with `data.read_back` `{expected, actual}` (schedule times only).
+6. Output goes through the usual redaction pass; `labelErrors` is free text (the `errors` suffix) and gets the string layers. Audit: `environment_id`, `container`, `wait`, like the auto-update tool.
+
+**STOP during the session (shared daemon), resolved by the maintainer.** Live, on one daemon serving environments A and B (B the test environment), structure only:
+- A smoke container created in B was listed in both environments with the same id.
+- A schedule set through B showed in B's GET and in `GET /api/schedules` with B's `environmentId`. A's GET for the same container showed none.
+- Every container of A was listed in B too. So, through B, the resolver would have accepted a scheduled stop of one of A's containers, invisible from A.
+- The maintainer chose the combined rule in rail 3.
+- Live after the fix: through B, a stop on one of A's containers (its stack tracked in A) → `guardrail_blocked`. The message named A as both the other listing environment and the tracking one. The log shows exactly five GETs (B's containers and stacks, the environment list, A's containers and stacks) and no PUT. Afterwards, neither environment showed a schedule.
+
+**Live structure** (DockHand 1.0.55; test environment for every write; `mcp-smoke-` resources the session created):
+- *GET:* every key the spec lists, with `null` times on a container without a schedule. DockHand's own container is `systemContainer: true` in both environments. The deployed dockhand-mcp container is `false`: its image name does not match DockHand's rule, so only this server's own rail protects it.
+- *Self-identification:* a busybox smoke container printed its own mount table and hostname to its log. The `/etc/hostname` mount's root held its full id, and its hostname was the 12-hex short id. `self_container.discover` returned the full id from the table, and the short id from the hostname alone; both match the container.
+- *Run/toggle* on the smoke container's schedule:
+  - Toggling `container_stop` switched both times off (`enabled: false` in the GET), and toggling `container_start` switched both back on.
+  - Run is asynchronous: DockHand answers `{success: true, message}` at once, and the execution completes later. The stop took about 10 s (the container's shell ignores SIGTERM). A start run issued while the container was still running was recorded `skipped`. After the stop completed, a start run started it.
+  - Executions are listed with `triggeredBy: manual`.
+- *Cleanup:* `scripts/smoke.py cleanup` now clears the scheduled start and stop of each prefixed container of a stack it deletes, before the delete. DockHand keeps a schedule by container name, so deleting the container would leave the row behind. Every run left no `container_start`/`container_stop` row in `GET /api/schedules`.
+
+**Smoke plans:** `read.json` gains a `dockhand_get_scheduled_actions` step on `${env}`. `operator.json` gains set → read back → a malformed time refused → unchanged → clear → read back empty, all on `${smoke_container}`. A write plan's `container` argument is pinned to `${smoke_container}`, and `schedule_id` was already forbidden, so a plan cannot run or toggle another container's schedule. Cleanup declares `GET /api/containers` and `PUT /api/scheduled-actions/{containerName}` beside its two stack endpoints (tiers read, operator, destructive).
+
+**Tests:** `tests/test_scheduled_actions.py`, plus updated pins.
+- *Failing commits:*
+  - `6f8e820`: 71 failed. These are the read and set tools, the formats, self-protection, the allowlists, the endpoint and env-required pins, the generic tier cases, and the smoke plan and cleanup.
+  - `92319e0`: 17 failed. These are the shared-daemon rule, its read-tool warnings and the extra declared endpoint.
+- *Regression guards (they pass at both commits):* the still-refused types; rule 1, and rule 2 on a single environment (they guard against over-refusal).
+- *Mutation checks:* with the time pattern loosened to `^.+$`, 9 format cases fail; the other 2 are caught by the length bounds. Without the stop refusal, the 3 self-protection tests fail.
+- *Pins updated deliberately:* `test_endpoint_map.py` adopts the two scheduled-actions operations; `test_env_required.py`'s tool list; `test_direct_answers.py`'s sync-tool count (37); `test_operator_tools.py` (`IDEMPOTENT`, `VERIFIED`; the line-diff read-back test is scoped to the content writes); the read and operator catalogue snapshots (the two tools, and the run/toggle descriptions and input schemas). The fixtures under `tests/fixtures/dockhand/scheduled-actions/` are invented and say so.
+
+**Docs:** `docs/TOOLS.md` (rows for both tools and the run/toggle rows); README (100 tools, 53 read, 37 operator); `docs/DOCKHAND-SETUP.md`:
+- `schedules:edit`, `containers:start` and `containers:stop` for the set tool and the container schedule types (spec);
+- `schedules:view` for the read tool (DockHand's source; the spec names none, so **verify**).
+
+**Versions:** `uv lock --upgrade` changed nothing (52 packages): `mcp` 2.3.0, `mcp-types` 2.3.0, `httpx` 0.28.1, `httpx2` 2.16.0, `pydantic` 2.14.2, `pydantic-core` 2.50.2, `pydantic-settings` 2.16.2, `pyyaml` 6.0.3, `starlette` 1.10.0, `uvicorn` 0.54.0, `anyio` 4.15.1; dev `ruff` 0.17.3, `mypy` 2.4.1, `pytest` 9.2.0, `pytest-asyncio` 1.4.1, `respx` 0.23.1. `scripts/deps-current.py` passes. python.org's newest stable is 3.15.2 (3.16 is a pre-release), so there is no Python bump. No dependency was added.
+
+**Alternatives rejected:**
+- A configured name for this server's container (a config-schema change); the mount table identifies it without one.
+- Relying on DockHand's `systemContainer` alone (it does not cover this server).
+- Refusing every write to a container another environment lists (it would refuse the operator's own tracked stacks on a shared daemon); warning only, or accepting and documenting (the schedule would stay invisible from the other environment).
+- Pre-refusing label-scheduled containers (DockHand's 409 already says why).
+- Sending `enabled` (toggling is `dockhand_toggle_schedule`'s job).
+
+**Deferred / follow-ups:**
+- Run and toggle address a schedule by id only. Running a `container_stop` schedule that exists on this server's own container (set elsewhere) would stop it, as `dockhand_stop_container` on that container would today. The rails are on the set tool, per the prompt.
+- The shared-daemon rule is not applied to the container lifecycle tools, which on a shared daemon can act through one environment on a container the other tracks (the S3g gap for containers).
+- A 5xx after the PUT is reported as `dockhand_http_error` without #17's saved/not-saved read-back.
