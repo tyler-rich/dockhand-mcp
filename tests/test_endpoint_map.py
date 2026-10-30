@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+import conftest
 import pytest
 from conftest import reference_spec
 
@@ -262,4 +263,5 @@ def test_spec_path_comes_from_the_environment(
     monkeypatch.setenv("DOCKHAND_MCP_SPEC_PATH", str(spec))
     assert reference_spec() == spec
     monkeypatch.delenv("DOCKHAND_MCP_SPEC_PATH")
+    monkeypatch.setattr(conftest, "_SPEC_PATH_AT_IMPORT", None)  # as if unset at pytest start
     assert reference_spec() == ROOT / "docs" / "api" / "dockhand-openapi-1.0.55.json"
