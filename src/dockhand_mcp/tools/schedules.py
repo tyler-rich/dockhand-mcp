@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 """Schedule tools: the schedule list, execution history, one execution with its log; run and
-toggle (operator, limited to non-destructive schedule types).
+toggle (operator, limited to schedule types whose run is an operator action).
 
 Execution logs appear only in `dockhand_get_schedule_execution`, size-capped; the list tools drop
 them (live DockHand embeds each execution's full log in the lists).
@@ -186,13 +186,24 @@ register(
 )
 
 # --- operator tier ----------------------------------------------------------------------------
-# Only schedule types whose run is an operator-level action. `image_prune` and `repo_prune`
-# delete data (the destructive tier's business); the backup family (`backup`, `repo_check`,
-# `repo_verify`) is not in v1; `system_cleanup` and `deploy_log_reconcile` delete old records.
-# System cleanup jobs are toggled through their own route.
+# Only schedule types whose run is an operator-level action. `container_start` and
+# `container_stop` start or stop one container, as the container lifecycle tools do (#19).
+# `image_prune` and `repo_prune` delete data (the destructive tier's business); the backup family
+# (`backup`, `repo_check`, `repo_verify`) is not in v1; `system_cleanup` and
+# `deploy_log_reconcile` delete old records. System cleanup jobs are toggled through their own
+# route.
 
-RunnableType = Literal["container_update", "git_stack_sync", "env_update_check"]
-ToggleType = Literal["container_update", "git_stack_sync", "env_update_check", "system"]
+RunnableType = Literal[
+    "container_update", "git_stack_sync", "env_update_check", "container_start", "container_stop"
+]
+ToggleType = Literal[
+    "container_update",
+    "git_stack_sync",
+    "env_update_check",
+    "container_start",
+    "container_stop",
+    "system",
+]
 SYSTEM_SCHEDULE_IDS: Final = frozenset({1, 2, 4})
 
 
@@ -227,8 +238,9 @@ register(
         name="dockhand_run_schedule_now",
         title="Run schedule now",
         description=(
-            "Run one container-update, git-stack-sync or environment-update-check schedule once, "
-            "outside its cron. Returns DockHand's result message."
+            "Run one container-update, container start or stop, git-stack-sync or "
+            "environment-update-check schedule once, outside its cron. Returns DockHand's result "
+            "message."
         ),
         input_model=RunScheduleInput,
         handler=run_schedule_now,
@@ -278,8 +290,8 @@ register(
         name="dockhand_toggle_schedule",
         title="Toggle schedule",
         description=(
-            "Enable a disabled schedule or disable an enabled one. Returns whether it is now "
-            "enabled."
+            "Enable a disabled schedule or disable an enabled one; a container's start and stop "
+            "times switch together. Returns whether it is now enabled."
         ),
         input_model=ToggleScheduleInput,
         handler=toggle_schedule,
