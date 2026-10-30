@@ -28,6 +28,7 @@ from test_operation_output import TOKEN, URL_PASS, URL_USER
 from test_operator_tools import CASES, Route, call, mount, sent
 
 from dockhand_mcp.client.envelope import Envelope
+from dockhand_mcp.client.redaction import MAX_ENTRY_CHARS
 from dockhand_mcp.guardrails.secrets import REDACTED
 from dockhand_mcp.tools.registry import REGISTRY
 
@@ -300,9 +301,8 @@ async def test_warning_messages_are_capped(dockhand: respx.MockRouter) -> None:
         dockhand, with_web(warnings=[{"status": "warning", "message": "x" * 2000}])
     )
     [warning] = item(envelope, "web")["warnings"]
-    assert len(warning["message"]) <= 512
-    assert envelope.warnings is not None
-    assert all(len(w) <= 600 for w in envelope.warnings)
+    assert len(warning["message"]) == MAX_ENTRY_CHARS + 1  # the cap, then the ellipsis
+    assert envelope.warnings == [f"web: {warning['message']}"]
 
 
 def test_output_schema_names_every_outcome_and_count() -> None:

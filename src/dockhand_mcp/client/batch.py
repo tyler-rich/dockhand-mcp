@@ -16,17 +16,30 @@ the operation-output redaction (`client/redaction.py`), then the 512-character c
 
 `interpret_update` reads `POST /api/containers/batch-update`'s synchronous answer the same way:
 any failure it reports, including a top-level `success: false` that names no failed container,
-is `operation_failed`, with each container's outcome from `results`.
+is `operation_failed`, with each container's outcome from `results`. A container is `succeeded`
+only on `success: true` with nothing that says otherwise (issue #20). DockHand 1.0.55's route
+(read in its public source) reports its one skip, the `dockhand.update=false` label, as
+`success: true` with an `error` starting `Skipped`: that is `skipped`. Each result may carry
+`warnings: [{status, message}]`; the only status that route sends, `warning`, is a
+minimum-release-age advisory for a pull that goes ahead, so it is informational. Any other
+error on a success, any other warning status and any unreadable warning are `unverified`. Every
+container that is not `succeeded` (an `unknown` one included) is `operation_failed`.
 """
 
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Final, Literal
 
 from dockhand_mcp.client.errors import ErrorCode
 from dockhand_mcp.client.redaction import PLAIN, OutputRedactor
 
-__all__ = ["BatchOutcome", "batch_summary", "interpret_batch", "interpret_update"]
+__all__ = [
+    "UPDATE_OUTCOMES",
+    "BatchOutcome",
+    "batch_summary",
+    "interpret_batch",
+    "interpret_update",
+]
 
 SUCCEEDED_STATUSES: Final = frozenset({"done", "completed"})
 COUNT_KEYS: Final = ("total", "success", "failed")
@@ -34,15 +47,29 @@ COUNT_KEYS: Final = ("total", "success", "failed")
 Outcome = Literal["succeeded", "failed", "unknown"]
 _ITEM_OUTCOMES: Final[Mapping[str, Outcome]] = {"success": "succeeded", "error": "failed"}
 
+UpdateOutcome = Literal["succeeded", "failed", "skipped", "unverified", "unknown"]
+UPDATE_OUTCOMES: Final[tuple[UpdateOutcome, ...]] = (
+    "succeeded",
+    "failed",
+    "skipped",
+    "unverified",
+    "unknown",
+)
+# Batch-update warning statuses that leave the update itself untouched (DockHand 1.0.55 source).
+INFORMATIONAL_WARNINGS: Final = frozenset({"warning"})
+SKIPPED_PREFIX: Final = "Skipped"
+
 
 @dataclass(frozen=True)
 class BatchOutcome:
-    """`problem` (and `code`) are None only when every item succeeded."""
+    """`problem` (and `code`) are None only when every item succeeded. `warnings` are
+    informational notes for the envelope."""
 
     items: list[dict[str, Any]]
     summary: dict[str, int]
     problem: str | None
     code: ErrorCode | None = None
+    warnings: list[str] = field(default_factory=list)
 
 
 def batch_summary(result: Any) -> Mapping[str, Any] | None:
@@ -134,15 +161,43 @@ def interpret_batch(
     return BatchOutcome(items, counts, None)
 
 
+def _update_warnings(
+    raw: Any, redactor: OutputRedactor
+) -> tuple[list[dict[str, str]], list[str], bool]:
+    """A result's `warnings`: the readable ones (redacted, capped), the informational messages,
+    and whether any is unclassified or unreadable."""
+    if raw is None:
+        return [], [], False
+    if not isinstance(raw, list):
+        return [], [], True
+    kept: list[dict[str, str]] = []
+    notes: list[str] = []
+    doubtful = False
+    for warning in raw:
+        status = warning.get("status") if isinstance(warning, Mapping) else None
+        message = warning.get("message") if isinstance(warning, Mapping) else None
+        if not (isinstance(status, str) and status and isinstance(message, str)):
+            doubtful = True
+            continue
+        text = redactor.text(message)
+        kept.append({"status": redactor.text(status), "message": text})
+        if status in INFORMATIONAL_WARNINGS:
+            notes.append(text)
+        else:
+            doubtful = True
+    return kept, notes, doubtful
+
+
 def _update_row(
     item: Mapping[str, str], results: Sequence[Mapping[str, Any]], redactor: OutputRedactor
-) -> dict[str, Any]:
-    """One sent container's outcome from DockHand's `results`.
+) -> tuple[dict[str, Any], list[str]]:
+    """One sent container's outcome from DockHand's `results`, and its informational notes.
 
     Live DockHand 1.0.46 answers with the recreated container's new id (S3g), so an item is
     matched by id (short or full) or, failing that, by its unchanged name.
     """
     row: dict[str, Any] = {"id": item["id"], "name": item["name"], "outcome": "unknown"}
+    notes: list[str] = []
     for result in results:
         cid = result.get("containerId")
         same_id = (
@@ -150,14 +205,29 @@ def _update_row(
             and bool(cid)
             and (item["id"].startswith(cid) or cid.startswith(item["id"]))
         )
-        if same_id or result.get("containerName") == item["name"]:
-            success = result.get("success")
-            if isinstance(success, bool):
-                row["outcome"] = "succeeded" if success else "failed"
-            message = _message(result.get("error"), redactor)
-            if message is not None and not success:
-                row["message"] = message
-    return row
+        if not (same_id or result.get("containerName") == item["name"]):
+            continue
+        row = {"id": item["id"], "name": item["name"], "outcome": "unknown"}
+        success = result.get("success")
+        error = result.get("error")
+        message = _message(error, redactor)
+        warnings, notes, doubtful = _update_warnings(result.get("warnings"), redactor)
+        outcome: UpdateOutcome = "unknown"
+        if success is False:
+            outcome = "failed"
+        elif success is True:
+            if isinstance(error, str) and error.startswith(SKIPPED_PREFIX):
+                outcome = "skipped"
+            elif message is not None or doubtful:
+                outcome = "unverified"
+            else:
+                outcome = "succeeded"
+        row["outcome"] = outcome
+        if message is not None and outcome != "succeeded":
+            row["message"] = message
+        if warnings:
+            row["warnings"] = warnings
+    return row, [f"{item['name']}: {note}" for note in notes]
 
 
 def interpret_update(
@@ -165,29 +235,49 @@ def interpret_update(
 ) -> BatchOutcome:
     """Read `POST /api/containers/batch-update`'s answer for the `sent` containers.
 
-    The spec's answer is `{success, results: [{containerId, containerName, success, error?}],
-    summary: {total, success, failed}}`. Any failure indicator is `operation_failed`: a top-level
-    `success: false`, a failed `results` item, or a non-zero `summary.failed`, even when the
-    others disagree. An answer carrying none of them is not a failure.
+    The spec's answer is `{success, results: [{containerId, containerName, success, error?,
+    warnings?}], summary: {total, success, failed}}`. Any failure indicator is
+    `operation_failed`: a top-level `success: false`, a failed `results` item, or a non-zero
+    `summary.failed`, even when the others disagree. So is any container whose outcome is not
+    `succeeded` (#20).
     """
     body = answer if isinstance(answer, Mapping) else {}
     raw = body.get("results")
     results = [r for r in raw if isinstance(r, Mapping)] if isinstance(raw, list) else []
-    items = [_update_row(item, results, redactor) for item in sent]
+    rows = [_update_row(item, results, redactor) for item in sent]
+    items = [row for row, _ in rows]
+    notes = [note for _, row_notes in rows for note in row_notes]
     summary = batch_summary(body) or {}
     counted = _count(summary.get("failed"))
     reported = sum(1 for r in results if r.get("success") is False)
-    tally = _tally(items, len(sent))
+    tally = _update_tally(items, len(sent))
+    problems = []
     if counted is not None and counted > 0:
         total = _count(summary.get("total")) or len(sent)
-        problem = f"{counted} of {total} containers failed to update"
+        problems.append(f"{counted} of {total} containers failed to update")
     elif reported:
-        problem = f"{reported} of {len(sent)} containers failed to update"
+        problems.append(f"{reported} of {len(sent)} containers failed to update")
     elif body.get("success") is False:
-        problem = "DockHand reports the update failed without naming a failed container"
-    else:
-        return BatchOutcome(items, tally, None)
-    return BatchOutcome(items, tally, f"{problem}; see data.items", "operation_failed")
+        problems.append("DockHand reports the update failed without naming a failed container")
+    if any(tally[k] for k in ("skipped", "unverified", "unknown")):
+        missed = {k: tally[k] for k in UPDATE_OUTCOMES if k != "succeeded" and tally[k]}
+        breakdown = ", ".join(f"{n} {k}" for k, n in missed.items())
+        problems.append(
+            f"{sum(missed.values())} of {len(sent)} containers were not confirmed updated: "
+            f"{breakdown}"
+        )
+    if not problems:
+        return BatchOutcome(items, tally, None, warnings=notes)
+    problem = f"{'; '.join(problems)}; see data.items"
+    return BatchOutcome(items, tally, problem, "operation_failed", notes)
+
+
+def _update_tally(items: Sequence[Mapping[str, Any]], sent: int) -> dict[str, int]:
+    """Counts of each update outcome among the sent containers."""
+    counts: dict[str, int] = {"total": sent}
+    for outcome in UPDATE_OUTCOMES:
+        counts[outcome] = sum(1 for i in items if i["outcome"] == outcome)
+    return counts
 
 
 def _tally(items: Sequence[Mapping[str, Any]], sent: int) -> dict[str, int]:

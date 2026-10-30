@@ -12,7 +12,7 @@ from typing import Annotated, Any, Final, Literal
 from pydantic import Field, StringConstraints, model_validator
 
 from dockhand_mcp.auth.approval import Approved, Preview
-from dockhand_mcp.client.batch import interpret_update
+from dockhand_mcp.client.batch import UPDATE_OUTCOMES, interpret_update
 from dockhand_mcp.client.envelope import Envelope, ErrorInfo, err, ok
 from dockhand_mcp.guardrails.names import DOCKER_NAME, resolve_container, resolve_containers
 from dockhand_mcp.tools._common import (
@@ -683,6 +683,49 @@ register(
 OPT_OUT_LABEL: Final = "dockhand.update"
 MAX_BATCH_UPDATE: Final = 25
 
+_COUNT: Final = {"type": "integer", "minimum": 0}
+# No top-level `required`: a detached call still running answers with `op_id` (and `progress`).
+UPDATE_SCHEMA: Final[dict[str, Any]] = {
+    "type": "object",
+    "properties": {
+        "containers": {"type": "array", "description": "The resolved containers sent."},
+        "result": {"description": "DockHand's answer, capped."},
+        "items": {
+            "type": "array",
+            "description": "Each container's outcome; only succeeded means it was updated.",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {"type": "string"},
+                    "name": {"type": "string"},
+                    "outcome": {"enum": list(UPDATE_OUTCOMES)},
+                    "message": {"type": "string", "description": "DockHand's message, redacted."},
+                    "warnings": {
+                        "type": "array",
+                        "description": "DockHand's warnings for this container, redacted.",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "status": {"type": "string"},
+                                "message": {"type": "string"},
+                            },
+                            "required": ["status", "message"],
+                        },
+                    },
+                },
+                "required": ["id", "name", "outcome"],
+            },
+        },
+        "summary": {
+            "type": "object",
+            "properties": {"total": _COUNT, **{k: _COUNT for k in UPDATE_OUTCOMES}},
+            "required": ["total", *UPDATE_OUTCOMES],
+        },
+        "op_id": {"type": "string"},
+        "progress": {"type": "array"},
+    },
+}
+
 
 class UpdateContainersInput(EnvWriteInputs):
     refs: list[Annotated[str, StringConstraints(min_length=1, max_length=255)]] = Field(
@@ -735,9 +778,12 @@ async def update_containers(ctx: ToolContext, args: UpdateContainersInput, env: 
         }
         if outcome.problem is not None and outcome.code is not None:
             return Envelope(
-                ok=False, data=data, error=ErrorInfo(code=outcome.code, message=outcome.problem)
+                ok=False,
+                data=data,
+                error=ErrorInfo(code=outcome.code, message=outcome.problem),
+                warnings=outcome.warnings or None,
             )
-        return ok(data)
+        return ok(data, warnings=outcome.warnings)
 
     envelope = await run_async_pattern(
         "detached",
@@ -755,13 +801,16 @@ register(
         name="dockhand_update_containers",
         title="Update containers",
         description=(
-            "Recreate containers with their latest images, keeping their configuration. Refuses "
-            "the whole call if any carries the label dockhand.update=false."
+            "Recreate containers with their latest images, keeping their configuration, and "
+            "return each container's outcome. Refuses the whole call if any carries the label "
+            "dockhand.update=false; any container failed, skipped or not confirmed updated "
+            "fails it."
         ),
         input_model=UpdateContainersInput,
         handler=env_tool(update_containers),
         annotations=OPERATOR_ANNOTATIONS,
         audit_args=("environment_id", "wait"),
+        data_schema=UPDATE_SCHEMA,
     ),
     Tier.OPERATOR,
     (
