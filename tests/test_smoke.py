@@ -340,6 +340,7 @@ async def test_cleanup_deletes_only_smoke_stacks_in_the_test_environment(
     dockhand.get("/api/stacks").respond(
         200, json=[{"name": "shop"}, {"name": "mcp-smoke-1a2b"}, {"name": "mcp-smoke-ffff"}]
     )
+    dockhand.get("/api/containers").respond(200, json=[])
     deleted = dockhand.route(method="DELETE", path__startswith="/api/stacks/").respond(
         200, json={"success": True}
     )

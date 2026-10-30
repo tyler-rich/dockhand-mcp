@@ -32,16 +32,19 @@ Write plans. `${test_env}` (DOCKHAND_MCP_TEST_ENVIRONMENT_ID), `${smoke_stack}` 
 plus a random suffix) and `${smoke_container}` (that stack's `web` service container) are
 pre-set. A plan that uses any of them, or calls a destructive tool, is a write plan: it is
 refused before any call unless DOCKHAND_MCP_TEST_ENVIRONMENT_ID is set, every `environment_id`
-in it is `${test_env}`, every `stack`/`name` is `${smoke_stack}`, every `ref` is
+in it is `${test_env}`, every `stack`/`name` is `${smoke_stack}`, every `ref`/`container` is
 `${smoke_container}`, no step names any other resource, and its only destructive tools are the
 ones that act on the smoke stack (`WRITE_PLAN_DESTRUCTIVE`).
 
     uv run python scripts/smoke.py cleanup --prefix mcp-smoke-
 
 removes the test environment's stacks whose names start with the prefix, through the DockHand
-client directly (the operator profile has no delete tool). It is maintainer tooling, not an MCP
-tool: it may call only `CLEANUP_ENDPOINTS`, enforced by the client, and it refuses any prefix
-other than `mcp-smoke-…` and any environment other than the test one.
+client directly (the operator profile has no delete tool). Before deleting a stack it clears the
+scheduled start and stop of each of its containers whose name has the prefix too: DockHand keeps
+a schedule by container name, and deleting the container would leave it behind. It is
+maintainer tooling, not an MCP tool: it may call only `CLEANUP_ENDPOINTS`, enforced by the
+client, and it refuses any prefix other than `mcp-smoke-…` and any environment other than the
+test one.
 """
 
 import argparse
@@ -87,7 +90,15 @@ SMOKE_PREFIX: Final = "mcp-smoke-"
 TEST_ENV_VAR: Final = "DOCKHAND_MCP_TEST_ENVIRONMENT_ID"
 # Maintainer tooling, not an MCP tool: the only DockHand endpoints the cleanup routine may call,
 # enforced by the client's declared-endpoint check (never a bypass or a global allow).
-CLEANUP_ENDPOINTS: Final = frozenset({("GET", "/api/stacks"), ("DELETE", "/api/stacks/{name}")})
+CLEANUP_ENDPOINTS: Final = frozenset(
+    {
+        ("GET", "/api/stacks"),
+        ("DELETE", "/api/stacks/{name}"),
+        ("GET", "/api/containers"),
+        ("PUT", "/api/scheduled-actions/{containerName}"),
+    }
+)
+STACK_LABEL: Final = "com.docker.compose.project"
 MAINTAINER_TOOLING: Final = {"smoke-cleanup": CLEANUP_ENDPOINTS}
 # In a write plan these arguments may only hold the pre-set values.
 WRITE_PLAN_PINNED: Final = {
@@ -95,6 +106,7 @@ WRITE_PLAN_PINNED: Final = {
     "stack": "${smoke_stack}",
     "name": "${smoke_stack}",
     "ref": "${smoke_container}",
+    "container": "${smoke_container}",
 }
 # ... and these, which would point a write at something else, may not appear at all.
 WRITE_PLAN_FORBIDDEN: Final = frozenset(
@@ -466,9 +478,10 @@ async def cleanup(
     test_env: int,
     out: Out = print,
 ) -> int:
-    """Delete the test environment's stacks named `prefix…`; returns the exit status."""
+    """Delete the test environment's stacks named `prefix…`, after clearing their containers'
+    scheduled start and stop; returns the exit status."""
     check_cleanup_target(prefix + "x", environment_id, prefix=prefix, test_env=test_env)
-    failed = 0
+    failed = unclear = 0
     with declared_endpoints(CLEANUP_ENDPOINTS):
         body = await client.get_json("/api/stacks", params={"env": environment_id})
         names = [
@@ -477,8 +490,14 @@ async def cleanup(
             if isinstance(item, dict) and isinstance(item.get("name"), str)
         ]
         targets = [n for n in names if n.startswith(prefix)]
+        listed = (
+            await client.get_json("/api/containers", params={"env": environment_id, "all": True})
+            if targets
+            else []
+        )
         for name in targets:
             check_cleanup_target(name, environment_id, prefix=prefix, test_env=test_env)
+            unclear += await _clear_schedules(client, listed, name, prefix, environment_id, out)
             try:
                 await client.delete_json(
                     "/api/stacks/{name}",
@@ -491,7 +510,41 @@ async def cleanup(
             else:
                 out(f"cleanup: {name} deleted")
     out(f"cleanup: {len(targets) - failed}/{len(targets)} stacks deleted")
-    return 1 if failed else 0
+    return 1 if failed or unclear else 0
+
+
+def _stack_containers(listed: Any, stack: str, prefix: str) -> list[str]:
+    """Names of `stack`'s containers (compose project label) that also start with `prefix`."""
+    return [
+        str(item["name"])
+        for item in (listed if isinstance(listed, list) else [])
+        if isinstance(item, dict)
+        and isinstance(item.get("name"), str)
+        and str(item["name"]).startswith(prefix)
+        and isinstance(item.get("labels"), dict)
+        and item["labels"].get(STACK_LABEL) == stack
+    ]
+
+
+async def _clear_schedules(
+    client: DockhandClient, listed: Any, stack: str, prefix: str, environment_id: int, out: Out
+) -> int:
+    """Clear each smoke container's scheduled start and stop; returns how many failed."""
+    failed = 0
+    for container in _stack_containers(listed, stack, prefix):
+        try:
+            await client.put_json(
+                "/api/scheduled-actions/{containerName}",
+                path_params={"containerName": container},
+                params={"env": environment_id},
+                json={"startAt": "", "stopAt": ""},
+            )
+        except DockhandError as e:
+            out(f"cleanup: {container} schedule FAILED {e.code}: {e.message}")
+            failed += 1
+        else:
+            out(f"cleanup: {container} schedule cleared")
+    return failed
 
 
 async def run_cleanup(args: argparse.Namespace) -> int:
