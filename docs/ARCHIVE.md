@@ -1591,3 +1591,23 @@ Classification (maintainer decision on these findings):
 - Run and toggle address a schedule by id only. Running a `container_stop` schedule that exists on this server's own container (set elsewhere) would stop it, as `dockhand_stop_container` on that container would today. The rails are on the set tool, per the prompt.
 - The shared-daemon rule is not applied to the container lifecycle tools, which on a shared daemon can act through one environment on a container the other tracks (the S3g gap for containers).
 - A 5xx after the PUT is reported as `dockhand_http_error` without #17's saved/not-saved read-back.
+
+### 2026-10-30 — Fix #19 follow-up: an unidentifiable own container is reported (branch feat/scheduled-actions)
+**Decision (maintainer, review of the PR above):** when this server cannot find its own container id, the stop protection must not lapse silently. Stops are not refused because of it.
+
+**What happened before:** `self_container.discover` returned an empty set, so `matches` was always false, and a scheduled stop of this server's own container was allowed. No log line, no `check` output.
+
+**Now:**
+- `self_container.identify()` returns `Identity(ids, in_container)`. `in_container` is true when the mount table has a mount on `/etc/hostname` (container runtimes bind-mount one; a host's own table has none) or when a runtime marker file exists (`/.dockerenv`, `/run/.containerenv`).
+- `startup.own_container_findings` applies only when the profile registers `dockhand_set_scheduled_actions` (`operator`/`admin`, not disabled) and no id was found:
+  - in a container → a `check` **problem** (exit 1): "cannot identify own container; scheduled stops cannot be refused for it (…don't override the container's hostname)";
+  - no container detected → a `check` **warning** with the same opening words. A workstation or `stdio` run has nothing to protect, but a runtime the detection misses is not silent either.
+- `run_checks` adds these first, so they appear even when DockHand is unreachable.
+- `serve` logs either one as a WARN at startup (`warn_if_unidentified`, after the preconditions).
+- Real run on a workstation (`operator` profile): the warning, exit 0. With `read-only`: nothing.
+- Docs: DOCKHAND-SETUP gains "This server's own container" (run it under Docker or Podman; don't override `hostname:`) and two rows in the `check` output table; TOOLS.md's set-tool row says it.
+- On "a user who sets `hostname:`": under Docker and Podman the `/etc/hostname` mount still names the id, so such a container is still identified. The hostname matters only as the fallback.
+
+**Toggle wording:** `dockhand_toggle_schedule`'s description already said "a container's start and stop times switch together". It is now pinned by a test. TOOLS.md's row says that toggling `container_stop` also disables the start, that one time alone cannot be disabled, and that to keep only one time you set the schedule again without the other.
+
+**Tests:** `tests/test_self_identification.py`; failing commit `812c946` (14 failed). One test passes at both commits: stops are still allowed when unidentified. `conftest.py` now also makes `identify` deterministic (not in a container).
