@@ -132,6 +132,8 @@ def clean_env(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
 def not_in_a_container(monkeypatch: pytest.MonkeyPatch) -> None:
     """The tests run as if this server were in no container, wherever they run (#19)."""
     monkeypatch.setattr(self_container, "own_container_ids", frozenset)
+    outside = self_container.Identity(ids=frozenset(), in_container=False)
+    monkeypatch.setattr(self_container, "identify", lambda: outside)
 
 
 @pytest.fixture(autouse=True)

@@ -768,3 +768,8 @@ async def test_read_tool_has_no_warning_when_the_set_tool_would_allow(
     env, _, _ = await read_call(GET_TOOL, {**E, "container": name})
     assert env.ok is True, env.error
     assert env.warnings is None
+
+
+def test_toggle_description_says_both_times_switch_together() -> None:
+    entry = next(t for t in REGISTRY.all() if t.name == "dockhand_toggle_schedule")
+    assert "start and stop times switch together" in entry.tool.description  # type: ignore[attr-defined]
