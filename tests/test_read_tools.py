@@ -117,6 +117,7 @@ CASES: dict[str, tuple[dict[str, Any], list[Route]]] = {
         ],
     ),
     "dockhand_list_stacks": (E, [("GET", "/api/stacks", fx("stacks", "list"))]),
+    "dockhand_get_stack_stats": (E, [("GET", "/api/stack-stats", fx("stacks", "stats"))]),
     "dockhand_get_stack_compose": (
         {**E, "stack": "shop"},
         [("GET", "/api/stacks/shop/compose", fx("stacks", "compose"))],
@@ -1050,6 +1051,7 @@ LOCALLY_PAGED = {
     "dockhand_list_containers": "/api/containers",
     "dockhand_get_all_container_stats": "/api/containers/stats",
     "dockhand_list_stacks": "/api/stacks",
+    "dockhand_get_stack_stats": "/api/stack-stats",
     "dockhand_list_images": "/api/images",
     "dockhand_list_volumes": "/api/volumes",
     "dockhand_list_stack_deploys": "/api/stacks/shop/deploys",
