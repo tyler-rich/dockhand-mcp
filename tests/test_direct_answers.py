@@ -87,8 +87,8 @@ SYNC_TOOLS: Final = sorted(
 
 
 def test_the_synchronous_tool_list_comes_from_the_registry() -> None:
-    # Never vacuous: 26 operator, 8 destructive and the 2 read-tier validators.
-    assert len(SYNC_TOOLS) == 36
+    # Never vacuous: 27 operator, 8 destructive and the 2 read-tier validators.
+    assert len(SYNC_TOOLS) == 37
     assert {"dockhand_rename_container", "dockhand_validate_stack_compose"} <= set(SYNC_TOOLS)
     assert not set(SYNC_TOOLS) & JOB_OR_STREAM
 

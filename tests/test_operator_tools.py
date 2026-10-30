@@ -761,7 +761,12 @@ def _stale_read_back(tool: str) -> list[Route]:
     return [(m, p, stale.get((m, p), body)) for m, p, body in CASES[tool][1]]
 
 
-@pytest.mark.parametrize("tool", sorted(VERIFIED))
+# The content writes, whose read-back is a line diff; the schedule write compares its two times
+# (tests/test_scheduled_actions.py).
+CONTENT_WRITES = VERIFIED - {"dockhand_set_scheduled_actions"}
+
+
+@pytest.mark.parametrize("tool", sorted(CONTENT_WRITES))
 async def test_every_read_back_mismatch_is_verification_failed(
     tool: str, dockhand: respx.MockRouter, operator_env: SetEnv
 ) -> None:

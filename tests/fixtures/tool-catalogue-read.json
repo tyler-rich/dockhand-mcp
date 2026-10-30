@@ -405,6 +405,28 @@
     "output_schema_sha256": "c572be267ccb164844eae24f8fe9e2b7795152a7df41fd2bf7797fac1f7f3104"
   },
   {
+    "name": "dockhand_get_scheduled_actions",
+    "title": "Get scheduled container start and stop",
+    "tier": "read",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "GET",
+        "/api/containers"
+      ],
+      [
+        "GET",
+        "/api/scheduled-actions/{containerName}"
+      ]
+    ],
+    "description": "Get a container's scheduled start and stop times, whether the schedule is enabled, whether its labels set it, and when it last started or stopped on schedule.",
+    "input_schema_sha256": "6a6f1797ff5dbc1e2fd2146428caeb931440c58d7f4c319ed836e671c2ff0d87",
+    "output_schema_sha256": "b8b6e786fe679e26365bd2700f6fc8f770d5c567036b411d4895abdeb8430272"
+  },
+  {
     "name": "dockhand_get_settings",
     "title": "Get settings",
     "tier": "read",
