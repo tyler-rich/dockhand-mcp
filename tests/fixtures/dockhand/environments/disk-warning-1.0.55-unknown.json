@@ -1,0 +1,11 @@
+{
+  "_comment": "Invented from the DockHand 1.0.55 spec schema (GET /api/environments/{id}/disk-warning: percentageSupported and storageDriver are null when the host could not be reached); not a recorded response. {{NAME}} placeholders are filled at load time.",
+  "body": {
+    "enabled": true,
+    "mode": "percent",
+    "threshold": 80,
+    "thresholdGb": 20,
+    "percentageSupported": null,
+    "storageDriver": null
+  }
+}

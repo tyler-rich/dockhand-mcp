@@ -70,7 +70,7 @@ def cmd_serve() -> int:
     import uvicorn
 
     from dockhand_mcp.client.dockhand import DockhandClient
-    from dockhand_mcp.startup import verify_serve_preconditions
+    from dockhand_mcp.startup import verify_serve_preconditions, warn_if_unidentified
 
     try:
         settings = _load()
@@ -92,6 +92,7 @@ def cmd_serve() -> int:
         anyio.run(preconditions)
     except ConfigError as exc:
         return _fail(exc.reason)
+    warn_if_unidentified(settings)
 
     if settings.transport == "stdio":
         return _serve_stdio(settings)

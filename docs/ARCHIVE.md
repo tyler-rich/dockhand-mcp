@@ -1396,3 +1396,271 @@ No server code changed in this PR.
 - Rewording the generated CHANGELOG entries: they read cleanly; only the supported-DockHand line is added.
 
 **Deferred / follow-ups:** none.
+
+### 2026-10-28 — DockHand API 1.0.55 and dependency refresh (PR #21, branch chore/dockhand-api-1.0.55)
+**Decision:** DockHand API 1.0.55 is the reference spec (`docs/api/dockhand-openapi-1.0.55.json`, git-ignored). The map and `env_required.py` are regenerated from it; the 26 new operations are classified and **no tool is added**. In the same PR: CPython 3.15, a full dependency refresh (which supersedes the open Dependabot uv PR), and the removal of `ToolsOnlyServer`, which mcp 2.3.0 made redundant. Supported DockHand: 1.0.55 (README, D-012, `CLAUDE.md`, `docs/api/README.md`, the bug-report placeholder, DOCKHAND-SETUP's Perm source).
+
+**Spec diff (1.0.49 → 1.0.55), done in this session from the two documents:** 387 → 413 operations, 269 → 285 paths; 26 added, 0 removed, 71 changed. `components` and the global `security` are unchanged; the top level differs only in `info.version` and tag names. No existing parameter changed required-ness. Two existing operations gained an *optional* query parameter (`GET /api/images/{id}/export` `tag`, `GET /api/settings/scanner` `checkNewerVersions`), neither sent by a tool.
+- *Added (26):* passkey sign-in and registration (4, `auth`) and the user's passkeys (2, `profile`); preferences environment-order (3), language (2) and tag-order (3); `GET`/`PUT /api/secret-providers/default`; environment state report (`GET /api/environments/report`, `GET`/`POST /api/environments/{id}/report`); `GET`/`POST /api/settings/minimum-release-age` and `…/pinned-digest-report`; `GET /api/stack-stats`; `GET`/`PUT /api/scheduled-actions/{containerName}`.
+- *Operations our tools call:* 35 of the 122 changed. The six the session prompt named: `containers/stats` (each entry gains `stack`, null when standalone), `pending-updates` (top-level `minimumReleaseAgeHours`; per item `pinnedToDigest` (required), `releaseAgeRemainingHours`), `settings/general` (operational fields omitted, not empty, for a caller without settings:view), `disk-warning` (`percentageSupported`, `storageDriver`, null when the host is unreachable), `/api/batch` (a stack is addressed by `name`; `items[].required` dropped), and the schedule run/toggle `type` lists. The other 29, reviewed with the maintainer: (a) documentation only, i.e. new 400 "Invalid stack name" and 403 responses or reworded 403s, on the stack, auto-update, schedule and network-connect endpoints; (b) a new optional request field no tool sends (stack `validate` `providerKeys`); (c) additive response fields: update-check `settings.minimumReleaseAge{Hours,Override,Overridden}`, git repository `stacksUsing[{stackName, environmentId}]`, semver `rejectOlderImages`, scanner `newerVersions`, batch-update per-result `warnings[{status, message}]`.
+- *Schedule types:* run and toggle gain `container_start` and `container_stop`. Correcting the session prompt: `deploy_log_reconcile` was already listed for both in 1.0.49.
+
+**Tiers for the new operations** (`scripts/gen-endpoint-map.py`; `test_endpoint_map.py` pins all 26). No existing operation changed tier (checked row by row).
+- Passkeys (auth and profile), preferences, secret-provider default → **excluded**, by the existing `auth`, `profile`, `preferences` and `secret-providers` tag rules.
+- Environment report (all three) → **excluded**, by a new `environments` rule (`/report`): it is a bulk export, as a downloadable file, of every accessible environment's inventory and known vulnerabilities (with the audit history on Enterprise), and its schedule mails it out of the installation unattended. SECURITY §4 gains an "Environment state reports" family.
+- `GET /api/stack-stats` → **read** (new `stack-stats` rule); `GET /api/scheduled-actions/{containerName}` → **read**, `PUT` → **operator** (new `scheduled-actions` rule), the family of setting a container's auto-update.
+- Settings minimum-release-age and pinned-digest-report → GET **read**, POST **admin**, by the existing `settings` rule: the tiers of the existing settings reads and writes (pinned against `settings/semver`).
+
+**env-required list:** 40 → **43**, approved by the maintainer. The 40 existing entries are unchanged; the three are new operations that require `env` (`GET /api/stack-stats`, `GET`/`PUT /api/scheduled-actions/{containerName}`). No tool calls them; the client now refuses them without `env`, like the excluded operations already listed. `test_env_required.py`'s hand list is 43.
+
+**Parsers and schemas:** every affected tool passes the body through (generic or page `outputSchema`), so **nothing broke and no `src/` fix was needed.** `tests/test_api_1_0_55.py` runs each against invented 1.0.55 fixtures (`tests/fixtures/dockhand/**/*-1.0.55*.json`) through the app, validating against its `outputSchema`: the stats `stack` (and null), the pending-update item fields, null disk-warning fields, the update-check release-age fields, `stacksUsing`, `rejectOlderImages`, `newerVersions`, `settings/general` with fields omitted (kept omitted, no error), and batch-update `warnings`. Notes:
+- `dockhand_get_pending_updates` and `dockhand_check_container_updates` return the `pendingUpdates` list only, so the new top-level `minimumReleaseAgeHours` is not shown (accepted, not surfaced).
+- Redaction: the new object fields (`stacksUsing` items, `newerVersions`) get the key-based pass and, under free-text keys, the string layers, like all tool data (tested with a `password` key and a `message` carrying a `dh_` token and URL credentials). The new string fields `stack` and `stackName` are identifiers, which the string layers leave alone everywhere (as a container's `name`); unchanged by design. A batch warning `message` with a token and a `user:pass@` URL is redacted in `dockhand_update_containers`' `result`. Mutation check: with the dispatcher's output redaction removed, the two new-field redaction tests fail; the batch-warning one still passes, because `client/dockhand.py` already redacts every non-GET answer.
+- `dockhand_update_containers` still judges an outcome on `success` alone; a warning can mean a container was skipped while the call is `ok: true`. Not changed here (behaviour change): issue #20.
+
+**Schedule types and batch:** `dockhand_run_schedule_now` and `dockhand_toggle_schedule` refuse `container_start`, `container_stop` and `deploy_log_reconcile` with `validation_error` and no request. These passed on the old code (the allowlists are unchanged), so they are **regression guards**; widening the allowlists made all 6 fail. Both batch tools send the constant `entityType: "containers"` (exact-body tests in `test_operator_tools.py` and `test_destructive_tools.py`); neither takes an entity type as input, so neither can address stacks.
+
+**DOCKHAND-SETUP:** the Perm column gained strings for 7 endpoints our tools call; with the maintainer's approval the tables say so: `schedules:view` (stated) for the schedule list and auto-update settings, executions still *verify*; `settings:view` covers general, scanner and semver; `stacks:view` covers stack paths; `stacks:edit` only for `dockhand_get_stack_paths`' path hints, which a read-only role should not be given: without it that section is reported under `errors` and the rest is returned.
+
+**Live** (read-only unless stated; structure only). The system-info tool reports no DockHand version field; its database `schemaVersion` names the scheduled container actions migration that 1.0.55 introduced. `dockhand-mcp check`: no problems. `containers/stats`: every entry has `stack` (a string; no standalone container existed to show `null`). `pending-updates`: an empty list in both environments, so the new item fields were not seen. `settings/general`: the full set (the token has settings:view). `semver`: `rejectOlderImages` (bool). `disk-warning`: `percentageSupported` (bool), `storageDriver` (string). `update-check`: the three release-age fields (int, bool, bool). A git repository: `stacksUsing` empty. Batch-update `warnings` could not be observed read-only (`operator.json` does not run `dockhand_update_containers`).
+
+**mcp 2.2.0 → 2.3.0** (release notes and the installed source, diffed against 2.2.0): #3614 makes `Server.create_initialization_options()` pass `experimental_capabilities` through as `None` instead of `{}`, so the SDK's `Server` with only the two tool handlers already advertises exactly `{"tools":{"listChanged":false}}` on the 2025-11-25 `initialize`. With the maintainer's approval `ToolsOnlyServer` (whose only job that was) is removed; `build_server` returns the SDK's `Server`. `test_capabilities.py` already asserts exact equality on 2026-07-28 `server/discover`, 2025-11-25 `initialize` and both SDK client modes; injecting `experimental: {}` into the server's capabilities made 4 of its 5 tests fail (the fifth checks refused methods). Otherwise unchanged for us: protocol negotiation, the server-side elicitation code (`server/elicitation.py`, `server/connection.py`) and `input_required` handling. The new `get_tool_input_schema` (Mcp-Param-* header validation) is unused: no tool declares `x-mcp-header`. Empty `_meta`/`params` are no longer sent on legacy client requests (smoke client only).
+
+**pydantic 2.14.1 / pydantic-settings 2.16.2:** no catalogue snapshot changed and the suite passed unchanged, so no tool schema changed meaning. pydantic-settings 2.16's alias changes apply only with `validate_by_alias=False` or a separate `alias`; `Settings` uses `validation_alias` with the defaults, and the `*_FILE` tests pass.
+
+**ruff 0.17.3 / mypy 2.4.1:** no new findings. **pytest-asyncio 1.4.1** warns when `asyncio_default_fixture_loop_scope` is unset; it is now set to `function`, the existing default.
+
+**CPython 3.15 (maintainer decision 2026-10-28):** python.org's newest stable is 3.15.2, so `requires-python`, the ruff/mypy targets, `.python-version` and both `python:3.15-slim` stages (by digest) moved in the first commit. Its relock alone was not installable on 3.15 (pydantic-core 2.46.5 has no cp315 wheel); the refresh commit after it is. **PyYAML 6.0.3, still its newest release, has no cp315 wheel**, so it is built from its hashed sdist:
+- `[tool.uv] build-constraint-dependencies` pins its build backend to `setuptools==84.2.1` and `Cython==3.3.0`. These are versions only: `uv.lock` does not lock or hash build dependencies, and the `deps-current` gate does not see them, so they are bumped by hand (CONTRIBUTING, "Hand-maintained pins").
+- The image's build stage sets `PYYAML_FORCE_LIBYAML=0` (pure-Python PyYAML; `safe_load`/`safe_dump` are pure Python anyway). CONTRIBUTING tells Windows maintainers to set it for `uv sync`.
+- **Removal condition:** when PyYAML ships cp315 wheels, drop both pins and `PYYAML_FORCE_LIBYAML`.
+- OSV-Scanner v2.6.0 (its official image, by digest) on per-platform archives of the 3.15 image, judged by `scripts/osv-image-gate.py` with `osv-scanner.toml`: linux/amd64 and linux/arm64 both **0 blocking, 69 reported** (v0.2.0: 0/65).
+- *Semgrep (2026-10-29, maintainer decision):* `ci`'s Semgrep CE step failed on this PR. `uvx` runs Semgrep on the interpreter `.python-version` names, now 3.15, and Semgrep's engine crashes there: 1.178.0 with SIGSEGV, the newest 1.182.1 with exit 1. Reproduced in Linux containers; both scan `src/` cleanly on 3.14 (200 rules, 0 findings), and Semgrep's classifiers stop at 3.14. The step now runs `uvx --python "${SEMGREP_PYTHON}"` with `SEMGREP_PYTHON: "3.14"`, and `SEMGREP_VERSION` goes to 1.182.1. The rules, files and `--error` are unchanged; a planted `subprocess` call with `shell=True` still gave a finding on 3.14. **Removal condition:** drop `SEMGREP_PYTHON` and `--python` once a Semgrep release runs on 3.15 (CONTRIBUTING, "Hand-maintained pins"). Rejected: Semgrep's Docker image (a larger workflow change) and leaving `ci` red.
+
+**Versions:** `uv lock --upgrade` (52 packages): `mcp` 2.3.0, `mcp-types` 2.3.0, `httpx` 0.28.1, `httpx2` 2.16.0, `httpcore2` 2.16.0, `pydantic` 2.14.1, `pydantic-core` 2.50.1, `pydantic-settings` 2.16.2, `pyyaml` 6.0.3, `starlette` 1.10.0, `sse-starlette` 3.6.0, `uvicorn` 0.54.0, `anyio` 4.15.1, `certifi` 2026.10.23, `cryptography` 50.0.2; dev `ruff` 0.17.3, `mypy` 2.4.1, `pytest` 9.2.0, `pytest-asyncio` 1.4.1, `respx` 0.23.1. Base image `python:3.15-slim`; PyYAML's build backend `setuptools` 84.2.1, `Cython` 3.3.0. No runtime dependency added. This supersedes the Dependabot uv PR "chore(deps): bump the uv group across 1 directory with 5 updates".
+
+**Tests:** failing commit `8e4e079` (62 failed there with the 1.0.55 spec present: 57 excluded-operation unreachability cases (19 operations × 3 profiles), the classification and settings-tier tests, both generated-from-spec tests, and the client-list test). `test_no_tool_calls_an_operation_new_in_1_0_55` passes at both commits (a regression guard).
+
+**Alternatives rejected:**
+- Staying on CPython 3.14 until PyYAML ships wheels (`deps-current` stays red); bumping without pinning PyYAML's build backend.
+- Keeping `ToolsOnlyServer` as a defensive no-op (the maintainer chose removal, guarded by the exact-equality capability test).
+- Surfacing batch-update warnings in `items` now (a behaviour change: #20); surfacing `minimumReleaseAgeHours` in the pending-updates tools.
+- String-redacting identifier fields such as `stack` (a redaction change nobody asked for).
+
+**Deferred / follow-ups:** #18 (per-stack stats read tool), #19 (scheduled container start/stop tools), #20 (`dockhand_update_containers` and per-item warnings). Drop the PyYAML build pins when cp315 wheels ship.
+
+### 2026-10-30 — uv build backend and deps-current coverage (branch chore/uv-toolchain)
+**Decision:** `uv_build` moves to `>=0.13.6,<0.14`, and `ci`'s deps-current step gains `scripts/deps-current.py`, which fails when a hand-maintained pin is behind its newest stable release. The spec-dependent tests take the spec path from `DOCKHAND_MCP_SPEC_PATH`.
+
+**Versions (before → after):** `uv_build` `>=0.12.19,<0.13` → `>=0.13.6,<0.14` (0.13.6 is the newest on PyPI). The Dockerfile `uv` stage was already 0.13.6 (Dependabot #22); it is the newest `uv` on PyPI and its digest matches the registry's index digest, so it is unchanged. `SEMGREP_VERSION` 1.182.1 → 1.183.0. `setuptools==84.2.1` and `Cython==3.3.0` are already the newest. No workflow pins a uv version: every `setup-uv` step takes the action's default (the newest uv), and there is no `required-version`, so nothing changed there. `uv lock --upgrade` (52 packages) moved `pydantic` 2.14.1 → 2.14.2, `pydantic-core` 2.50.1 → 2.50.2 and `opentelemetry-api` 1.45.1 → 1.45.2. python.org's newest stable minor is still 3.15; no Python bump.
+
+**uv 0.13 changelog:** the breaking changes are the default Python (3.15), `--require-hashes` in included constraints files, option values no longer split on spaces (`--build-constraint` included), `tar-codec` as the default tar backend (stricter archive validation), and `uv build --clear` rejecting a source directory as output. None touches `uv sync --frozen`, the lockfile format or the `uv_build` configuration; the release notes say `uv_build` has no breaking configuration changes and only ask for the upper bound to be raised. The refresh rewrote `uv.lock` with 0.13.6 and changed package entries only, so CI's setup-uv reads it as before. `uv build` on `dev` and on this branch gives a wheel with the same 69 files and identical contents, and an sdist with the same 61 files, differing only in the `pyproject.toml` it carries (and its `.orig` copy).
+
+**deps-current:** the new script (stdlib only, offline fixtures in `tests/test_deps_current.py`) reads the Dockerfile `uv` stage tag, the `uv_build` requirement, each `build-constraint-dependencies` pin and `SEMGREP_VERSION`, and compares them with PyPI's `info.version`. `uv_build` fails when the lower bound is not the newest release or the upper bound excludes it, which makes a new minor a deliberate bump. A pin the script cannot find is a failure, so a reformat cannot silently disable a check. An unreachable PyPI skips that check with a notice. The lockfile and CPython checks stay inline in `ci.yml`. **Semgrep notice:** while `SEMGREP_PYTHON` is set, a `::notice::` is printed when the newest Semgrep lists the project's Python among its classifiers (1.183.0 lists 3.10–3.14, so none today). The notice is a signal to try removing the override, not a failure.
+
+**Spec path:** the spec-dependent tests (`test_endpoint_map.py`, `test_env_required.py`) call `conftest.reference_spec()`: `DOCKHAND_MCP_SPEC_PATH` when set, else the repo-relative path. It is also read at import, because the autouse `clean_env` fixture clears every `DOCKHAND_*` variable before each test. Two sessions had copied the git-ignored spec into a throwaway worktree; CLAUDE.md's failing-test-proof step now points the variable at the main clone's file.
+
+**Tests:** failing commit `acc5992` (the new tests, before the script and the variable existed).
+
+**Alternatives rejected:** a `setup-uv` `version:` pin (nothing to pin; it would only add a pin to watch); a Dependabot-only approach for the Dockerfile stage (it does not see `uv_build` or the build constraints); an `.env`-style exemption for the variable in `clean_env` (it would leak into the config tests).
+
+### 2026-10-30 — Fix #20: update_containers reports skipped and unverified containers (PR #24, branch fix/issue-20-update-skips)
+**Decision:** `dockhand_update_containers` reports a container as `succeeded` only when DockHand says `success: true` and nothing in its result says otherwise. The call is `ok: true` only when every requested container `succeeded`; any other outcome is `operation_failed` (existing code), with the counts in the message, e.g. "1 of 2 containers were not confirmed updated: 1 skipped; see data.items". `data.items` and `data.summary` are still returned.
+
+**Status classification and its source.** The spec (1.0.55) types `warnings: [{status, message}]` with no enumeration. DockHand's public source (github.com/Finsys/dockhand, tag v1.0.55; read only, nothing copied; BUSL) shows:
+- `src/routes/api/containers/batch-update/+server.ts` collects warnings from the image pull's progress through `src/lib/utils/pull-warning.ts`, whose type allows only `status: 'warning'`.
+- The only producer is `pullImage` in `src/lib/server/docker.ts`. The batch-update route calls it without enforcing the minimum release age, so the warning is an advisory (`src/lib/server/minimum-release-age-core.ts`: the cooldown remains, or could not be determined, "pulling it anyway"). The pull and the recreate go ahead.
+- Nothing in that route skips an update for release age or a digest pin, as the issue supposed. Its one skip is the `dockhand.update=false` label check, reported as `success: true` with `error: "Skipped - dockhand.update=false label"`. DockHand's check is broader than this server's guardrail (it parses more boolean spellings and honours `wud.watch` labels), so this skip is reachable through the tool, and it used to be reported as `succeeded`.
+
+Classification (maintainer decision on these findings):
+- `warning` → informational: the outcome stays `succeeded`; the warning is kept in the item and copied to the envelope's `warnings` as `<name>: <message>`.
+- `success: true` with an `error` starting `Skipped` → `skipped`.
+- `success: true` with any other error, any other warning status, or an unreadable warning (not a list, not an object, missing or non-text status or message) → `unverified`. A skip outranks an unverified warning.
+- `success: false` → `failed`; no result for a container → `unknown`.
+- **`unknown` now fails the call** (maintainer decision): this reverses #15's "an answer with no failure indicator stays `ok: true`". Never assume success: a container the answer does not name was not shown to be updated. `test_an_answer_with_no_verdict_stays_ok` became `test_an_answer_naming_no_container_is_operation_failed`. The maintainer made this conditional on a normal live update resolving to `succeeded`, not `unknown`; it did (see Live).
+
+**Output:** each item may carry `warnings` (status and message through the output redactor, each capped at 512 characters, like the per-item `message`), and a `message` for any outcome other than `succeeded`. `data.summary` is `{total, succeeded, failed, skipped, unverified, unknown}` (`unknown` added beside the two counts the prompt named, so the counts add up to `total`). The message keeps #15's failure sentences and adds the "not confirmed updated" breakdown only when a skipped, unverified or unknown container is present, so a failed-only answer reads as before. The tool now declares a `data_schema` (outcome enum, item and summary shape; no top-level `required`, since a detached call still running answers `{op_id, progress}`), which changes its `outputSchema`; with the new description, that is the one change in the operator catalogue snapshot. TOOLS.md's row and ARCHITECTURE §6's `operation_failed` list say so. No error code was added. `client/batch.py`'s `interpret_batch` (the batch tool) is not changed: its behaviour is proven by its existing tests.
+
+**Tests:** failing commit `8665a0f` (19 failed there: the new skip, unverified (five unreadable shapes), informational, mixed, redaction, cap, schema and description tests; the two #15 tests whose summary assertion gained the new counts; the reversed unknown test; and the 1.0.55 fixture test, now asserting the warning reaches `items`). `tests/fixtures/dockhand/containers/batch-update-1.0.55.json` used an invented status `skipped`; it now uses `warning` with an advisory in the source's wording (still invented, and it says so). After the live run, a regression guard for `warnings: []` was added (it passes on both commits).
+
+**Live** (DockHand 1.0.55, test environment, an `mcp-smoke-` stack the session created, structure only): one update of its container gave `ok: true`, operation `detached`/`completed`, no envelope `warnings`; `data` keys `containers`, `items`, `result`, `summary`; the item `{id, name, outcome: "succeeded"}`; summary 1 succeeded, every other count 0. DockHand's result item carried `containerId`, `containerName`, `success` and **`warnings: []`** (an empty list on an ordinary update). No skip, unverified or informational path was provoked live: that would mean changing the minimum release age or labelling a container, so those paths are covered by invented fixtures. `read.json` 54/54 (default and `--mode legacy`), `operator.json` 14/14, `destructive.json` 10/10 (admin, `CONFIRM_MODE=param`); everything cleaned up, no `mcp-smoke-` stack or container left in either environment; no prune run.
+
+**Versions:** `uv lock --upgrade` changed nothing (52 packages): `mcp` 2.3.0, `httpx` 0.28.1, `pydantic` 2.14.2, `pydantic-settings` 2.16.2, `pyyaml` 6.0.3; dev `ruff` 0.17.3, `mypy` 2.4.1, `pytest` 9.2.0, `pytest-asyncio` 1.4.1, `respx` 0.23.1. `scripts/deps-current.py` passes. python.org's newest stable is 3.15.2: no Python bump. No dependency added.
+
+**Alternatives rejected:**
+- Classifying warning statuses the source never sends (e.g. a `skipped` status): a guess.
+- Treating `warning` as `unverified`: every release-age advisory would fail an update that happened.
+- Matching the skip by the full label text: the `Skipped` prefix is what the route uses for a skip, and any other text on a success is `unverified` anyway.
+- Keeping `unknown` as `ok: true` (#15): the maintainer chose fail-safe.
+
+**Deferred / follow-ups:** the guardrail's label check is narrower than DockHand's (boolean spellings, `wud.watch`); a container DockHand skips for that reason is now reported `skipped`, not refused up front. Aligning the guardrail is its own change.
+
+### 2026-10-30 — Fix #18: dockhand_get_stack_stats (branch feat/stack-stats)
+**Decision:** One read-tier tool, `dockhand_get_stack_stats`, answers "which stack is using the most CPU or memory?" in one call instead of summing `dockhand_get_all_container_stats` by each entry's `stack`. It reads `GET /api/stack-stats?env` (`env` always sent) and declares that plus `GET /api/environments` for defaulting (F-09, as `dockhand_list_tags`). Registered `Tier.READ` (all three profiles), `title`, `readOnlyHint: true`, the page `outputSchema`, output through the usual redaction pass.
+
+**Output:** the uniform page envelope, `data = {items, count, total, has_more, sort_by}`; each item is DockHand's entry unchanged (`name`, `cpuPercent`, `memoryUsage`, `memoryLimit`, `networkRx`, `networkTx`, `blockRead`, `blockWrite`, `runningCount`). Inputs: `sort_by` (`cpu` default, `memory`, `network` = rx+tx, `block_io` = read+write, `name`), `limit=50 (1..500)`, `offset=0`. Measures sort highest first, `name` ascending, ties by name; sorting happens before paging. A non-array body is treated as an empty list.
+
+**Live structure** (read-only, through the project's own client; structure only): a JSON array, one object per stack with a running container, sorted by `name`, no duplicate names; keys exactly the nine above, all present on every entry; `cpuPercent` is a float or an int (0 for idle stacks), the other numbers ints; `memoryLimit` > 0 on every entry. Both environments the token sees answered. This matches the spec's 200 schema, so the tool is **not experimental**. The fixture (`tests/fixtures/dockhand/stacks/stats.json`) is invented with placeholder names (`stack-a`…) and says so.
+
+**Tests:** failing commit `9b4b4e2` (16 failed across `tests/test_stack_stats.py` and `tests/test_read_tools.py`): populated and empty environments, each `sort_by`, tie-breaking, limit after sorting and bounds, `env` sent (also when defaulted), only the declared endpoints called, all three profiles, metadata. Two existing pins were updated deliberately, not loosened: `test_endpoint_map.py` now says the only operation new in 1.0.55 with a tool is `GET /api/stack-stats` (every other new operation still has none), and `test_env_required.py`'s tool list gains the tool. The read-tier catalogue snapshot gains the tool.
+
+**Docs:** `docs/TOOLS.md` row; README (98 tools, 52 read); `docs/DOCKHAND-SETUP.md` (52 read tools; `containers:view` and `stacks:view`, from the spec's summary); `scripts/smoke-plans/read.json` step using `${env}`.
+
+**Versions:** `uv lock --upgrade` changed nothing in the lockfile; CPython 3.15.2 is the newest stable minor (3.16 is pre-release only), so no bump. `mcp` 2.3.0, `mcp-types` 2.3.0, `httpx` 0.28.1, `httpx2` 2.16.0, `pydantic` 2.14.2, `pydantic-settings` 2.16.2, `starlette` 1.10.0, `uvicorn` 0.54.0, `anyio` 4.15.1; dev `ruff` 0.17.3, `mypy` 2.4.1, `pytest` 9.2.0, `pytest-asyncio` 1.4.1, `respx` 0.23.1. No dependency added; `scripts/deps-current.py` passes.
+
+**Alternatives rejected:** summing container stats server-side (needs the container list and double the calls); returning a bare list (the page envelope carries `total`/`has_more` like the other lists); passing `sort_by` to DockHand (it has no such parameter).
+
+**Deferred / follow-ups:** scheduled actions (#19).
+
+### 2026-10-30 — Fix #19: scheduled container start/stop (branch feat/scheduled-actions)
+**Decision:** Two tools for DockHand 1.0.55's scheduled container start and stop. `dockhand_get_scheduled_actions` (read tier, all three profiles) returns a container's schedule. `dockhand_set_scheduled_actions` (operator tier) sets or clears it. `dockhand_run_schedule_now` and `dockhand_toggle_schedule` now also accept `container_start` and `container_stop`. Tools: 100 (53 read, 37 operator, 10 destructive).
+
+**Verified at the source** (spec 1.0.55; DockHand's public source at tag v1.0.55 was read for semantics the spec leaves open. Nothing was copied; BUSL.)
+- *Format:* each time is `HH:MM` (every day) or a five-field cron expression (the PUT summary). DockHand's `actionTimeToCron` accepts `H:MM` or `HH:MM` with hour ≤ 23 and minute ≤ 59, or exactly five whitespace-separated fields that croner parses.
+  - The tool validates `^(?:(?:[01]?[0-9]|2[0-3]):[0-5][0-9]|F( F){4})$`, where F is `[0-9A-Za-z*?/,#-]+`, with at most 100 characters. Anything else is `validation_error` and nothing is sent.
+  - Cron field *values* (e.g. minute 99) are DockHand's check: HTTP 400, surfaced as `dockhand_http_error`.
+- *PUT semantics:* the body `{startAt, stopAt}` replaces both times; an empty or missing one is none. Both empty deletes the row. `enabled` sent → set; omitted → an existing row keeps its state. The tool always sends both keys (an omitted input is `""`) and never sends `enabled`.
+- *Refusals DockHand makes itself:* 403 for a system container, 404 for an unknown container, 409 when `dockhand.start.at`/`dockhand.stop.at` labels set the schedule (`source: label`).
+- *Response:* `{startAt, stopAt, enabled, source, labelErrors, systemContainer, lastStarted, lastStopped}`; it is returned as `data.schedule` unchanged.
+- *`GET /api/schedules`:* a schedule appears as one row per time, typed `container_start` / `container_stop`. Both rows share the stored row's `id`, which is the `schedule_id` for run and toggle. `entityName` is the container, `environmentId` the environment it was set through, `cronExpression` the time (an `HH:MM` becomes `M H * * *`).
+- *Run/toggle* (spec notes): toggling either type switches both times; run and toggle-on also need containers start/stop.
+
+**Allowlist change, and why it does not widen destructive reach.** S3a's restriction keeps schedule types that delete data or records out of the operator tier. `container_start` / `container_stop` start or stop the one container the row names. The container lifecycle tools already do that in this tier. The `Literal` types gain exactly those two values; `test_allowlists_are_exactly_the_operator_types` pins the sets. `image_prune`, `repo_prune`, the backup family (`backup`, `repo_check`, `repo_verify`), `system_cleanup` and `deploy_log_reconcile` are still refused with no request. S10's 1.0.55 regression guard (`test_api_1_0_55.py`) no longer lists the two container types. It now guards `deploy_log_reconcile`, `image_prune` and `repo_prune`; `test_scheduled_actions.py` covers every refused type for both tools.
+
+**Safety rails on the set tool, all before any write:**
+1. *Resolution:* one `GET /api/containers?env&all=true` resolves the name or id (`names.container_from`, the resolver's matching on a list already read). An unknown container is `not_found` with no write.
+2. *Format:* as above.
+3. *Shared daemon* (maintainer decision during the session, after the STOP below):
+   - The container's compose project is a stack tracked in the requested environment → allowed.
+   - Otherwise, no other environment lists the container's id → allowed. On a deployment with one daemon per environment, that covers every untracked compose container and every standalone one.
+   - Otherwise → `guardrail_blocked`, naming the other environments by id and the environment tracking its stack, if any.
+   - Any stack, environment or container list that cannot be read → `guardrail_blocked` (fail closed).
+   - Reads: the environment's stack list; then, unless it tracks the stack, `GET /api/environments` and one container list per other environment; and, only to name the tracking environment in a refusal, those environments' stack lists. No inspects.
+   - This applies to every set (start, stop, or clear).
+   - The read tool runs the same check and always answers, with the reason as a warning where the set tool would refuse.
+4. *Self-protection, for a `stop`:*
+   - **DockHand's container:** refused (`guardrail_blocked`) when DockHand's GET reports `systemContainer: true`. DockHand computes that from the image name (`isSystemContainer`: DockHand's own image or a Hawser agent's). It is the same signal DockHand's PUT refuses with 403, and it covers Hawser agents too, since stopping one cuts off its environment.
+   - **This server's container:** `guardrails/self_container.py` reads this process's own `/proc/self/mountinfo` (capped at 1 MiB) and takes the 64-hex id from the root of the mount whose mount point is `/etc/hostname` (Docker, rootless Docker: `…/containers/<id>/hostname`; Podman: `…/overlay-containers/<id>/userdata/hostname`). Only that mount counts: a Docker host's own table lists every container's `…/mounts/shm`. If the table has none, a hostname of exactly 12 lowercase hex characters is taken as the short id. Ids match by prefix in either direction.
+   - Outside a container, both checks find nothing and nothing is refused.
+   - This reads no socket and no host path, and runs no subprocess (D-003).
+   - Tests run as if outside any container (an autouse fixture in `conftest.py`).
+   - A start, or a clear, of either container is not refused here; DockHand refuses any write to a system container itself.
+5. *Read-back:* after the PUT, a GET; the two times are compared, with an empty string and `null` both read as none. A mismatch → `verification_failed`, `verified: false`, with `data.read_back` `{expected, actual}` (schedule times only).
+6. Output goes through the usual redaction pass; `labelErrors` is free text (the `errors` suffix) and gets the string layers. Audit: `environment_id`, `container`, `wait`, like the auto-update tool.
+
+**STOP during the session (shared daemon), resolved by the maintainer.** Live, on one daemon serving environments A and B (B the test environment), structure only:
+- A smoke container created in B was listed in both environments with the same id.
+- A schedule set through B showed in B's GET and in `GET /api/schedules` with B's `environmentId`. A's GET for the same container showed none.
+- Every container of A was listed in B too. So, through B, the resolver would have accepted a scheduled stop of one of A's containers, invisible from A.
+- The maintainer chose the combined rule in rail 3.
+- Live after the fix: through B, a stop on one of A's containers (its stack tracked in A) → `guardrail_blocked`. The message named A as both the other listing environment and the tracking one. The log shows exactly five GETs (B's containers and stacks, the environment list, A's containers and stacks) and no PUT. Afterwards, neither environment showed a schedule.
+
+**Live structure** (DockHand 1.0.55; test environment for every write; `mcp-smoke-` resources the session created):
+- *GET:* every key the spec lists, with `null` times on a container without a schedule. DockHand's own container is `systemContainer: true` in both environments. The deployed dockhand-mcp container is `false`: its image name does not match DockHand's rule, so only this server's own rail protects it.
+- *Self-identification:* a busybox smoke container printed its own mount table and hostname to its log. The `/etc/hostname` mount's root held its full id, and its hostname was the 12-hex short id. `self_container.discover` returned the full id from the table, and the short id from the hostname alone; both match the container.
+- *Run/toggle* on the smoke container's schedule:
+  - Toggling `container_stop` switched both times off (`enabled: false` in the GET), and toggling `container_start` switched both back on.
+  - Run is asynchronous: DockHand answers `{success: true, message}` at once, and the execution completes later. The stop took about 10 s (the container's shell ignores SIGTERM). A start run issued while the container was still running was recorded `skipped`. After the stop completed, a start run started it.
+  - Executions are listed with `triggeredBy: manual`.
+- *Cleanup:* `scripts/smoke.py cleanup` now clears the scheduled start and stop of each prefixed container of a stack it deletes, before the delete. DockHand keeps a schedule by container name, so deleting the container would leave the row behind. Every run left no `container_start`/`container_stop` row in `GET /api/schedules`.
+
+**Smoke plans:** `read.json` gains a `dockhand_get_scheduled_actions` step on `${env}`. `operator.json` gains set → read back → a malformed time refused → unchanged → clear → read back empty, all on `${smoke_container}`. A write plan's `container` argument is pinned to `${smoke_container}`, and `schedule_id` was already forbidden, so a plan cannot run or toggle another container's schedule. Cleanup declares `GET /api/containers` and `PUT /api/scheduled-actions/{containerName}` beside its two stack endpoints (tiers read, operator, destructive).
+
+**Tests:** `tests/test_scheduled_actions.py`, plus updated pins.
+- *Failing commits:*
+  - `6f8e820`: 71 failed. These are the read and set tools, the formats, self-protection, the allowlists, the endpoint and env-required pins, the generic tier cases, and the smoke plan and cleanup.
+  - `92319e0`: 17 failed. These are the shared-daemon rule, its read-tool warnings and the extra declared endpoint.
+- *Regression guards (they pass at both commits):* the still-refused types; rule 1, and rule 2 on a single environment (they guard against over-refusal).
+- *Mutation checks:* with the time pattern loosened to `^.+$`, 9 format cases fail; the other 2 are caught by the length bounds. Without the stop refusal, the 3 self-protection tests fail.
+- *Pins updated deliberately:* `test_endpoint_map.py` adopts the two scheduled-actions operations; `test_env_required.py`'s tool list; `test_direct_answers.py`'s sync-tool count (37); `test_operator_tools.py` (`IDEMPOTENT`, `VERIFIED`; the line-diff read-back test is scoped to the content writes); the read and operator catalogue snapshots (the two tools, and the run/toggle descriptions and input schemas). The fixtures under `tests/fixtures/dockhand/scheduled-actions/` are invented and say so.
+
+**Docs:** `docs/TOOLS.md` (rows for both tools and the run/toggle rows); README (100 tools, 53 read, 37 operator); `docs/DOCKHAND-SETUP.md`:
+- `schedules:edit`, `containers:start` and `containers:stop` for the set tool and the container schedule types (spec);
+- `schedules:view` for the read tool (DockHand's source; the spec names none, so **verify**).
+
+**Versions:** `uv lock --upgrade` changed nothing (52 packages): `mcp` 2.3.0, `mcp-types` 2.3.0, `httpx` 0.28.1, `httpx2` 2.16.0, `pydantic` 2.14.2, `pydantic-core` 2.50.2, `pydantic-settings` 2.16.2, `pyyaml` 6.0.3, `starlette` 1.10.0, `uvicorn` 0.54.0, `anyio` 4.15.1; dev `ruff` 0.17.3, `mypy` 2.4.1, `pytest` 9.2.0, `pytest-asyncio` 1.4.1, `respx` 0.23.1. `scripts/deps-current.py` passes. python.org's newest stable is 3.15.2 (3.16 is a pre-release), so there is no Python bump. No dependency was added.
+
+**Alternatives rejected:**
+- A configured name for this server's container (a config-schema change); the mount table identifies it without one.
+- Relying on DockHand's `systemContainer` alone (it does not cover this server).
+- Refusing every write to a container another environment lists (it would refuse the operator's own tracked stacks on a shared daemon); warning only, or accepting and documenting (the schedule would stay invisible from the other environment).
+- Pre-refusing label-scheduled containers (DockHand's 409 already says why).
+- Sending `enabled` (toggling is `dockhand_toggle_schedule`'s job).
+
+**Deferred / follow-ups:**
+- Run and toggle address a schedule by id only. Running a `container_stop` schedule that exists on this server's own container (set elsewhere) would stop it, as `dockhand_stop_container` on that container would today. The rails are on the set tool, per the prompt.
+- The shared-daemon rule is not applied to the container lifecycle tools, which on a shared daemon can act through one environment on a container the other tracks (the S3g gap for containers).
+- A 5xx after the PUT is reported as `dockhand_http_error` without #17's saved/not-saved read-back.
+
+### 2026-10-30 — Fix #19 follow-up: an unidentifiable own container is reported (branch feat/scheduled-actions)
+**Decision (maintainer, review of the PR above):** when this server cannot find its own container id, the stop protection must not lapse silently. Stops are not refused because of it.
+
+**What happened before:** `self_container.discover` returned an empty set, so `matches` was always false, and a scheduled stop of this server's own container was allowed. No log line, no `check` output.
+
+**Now:**
+- `self_container.identify()` returns `Identity(ids, in_container)`. `in_container` is true when the mount table has a mount on `/etc/hostname` (container runtimes bind-mount one; a host's own table has none) or when a runtime marker file exists (`/.dockerenv`, `/run/.containerenv`).
+- `startup.own_container_findings` applies only when the profile registers `dockhand_set_scheduled_actions` (`operator`/`admin`, not disabled) and no id was found:
+  - in a container → a `check` **problem** (exit 1): "cannot identify own container; scheduled stops cannot be refused for it (…don't override the container's hostname)";
+  - no container detected → a `check` **warning** with the same opening words. A workstation or `stdio` run has nothing to protect, but a runtime the detection misses is not silent either.
+- `run_checks` adds these first, so they appear even when DockHand is unreachable.
+- `serve` logs either one as a WARN at startup (`warn_if_unidentified`, after the preconditions).
+- Real run on a workstation (`operator` profile): the warning, exit 0. With `read-only`: nothing.
+- Docs: DOCKHAND-SETUP gains "This server's own container" (run it under Docker or Podman; don't override `hostname:`) and two rows in the `check` output table; TOOLS.md's set-tool row says it.
+- On "a user who sets `hostname:`": under Docker and Podman the `/etc/hostname` mount still names the id, so such a container is still identified. The hostname matters only as the fallback.
+
+**Toggle wording:** `dockhand_toggle_schedule`'s description already said "a container's start and stop times switch together". It is now pinned by a test. TOOLS.md's row says that toggling `container_stop` also disables the start, that one time alone cannot be disabled, and that to keep only one time you set the schedule again without the other.
+
+**Tests:** `tests/test_self_identification.py`; failing commit `812c946` (14 failed). One test passes at both commits: stops are still allowed when unidentified. `conftest.py` now also makes `identify` deterministic (not in a container).
+
+### 2026-10-30 — Release-tool pins and their deps-current coverage (branch chore/release-tool-pins)
+**Decision:** The tools the workflows download move to their newest stable releases, and `scripts/deps-current.py` now fails when any of them falls behind.
+- `OSV_SCANNER_VERSION` v2.6.0 → **v2.7.0** in `ci.yml`, `release.yml` and `image-scan.yml`. `OSV_SCANNER_SHA256` is the `osv-scanner_linux_amd64` line of v2.7.0's own `osv-scanner_SHA256SUMS`, fetched for this change; the downloaded binary hashes to it.
+- `COSIGN_VERSION` v3.1.3 → **v3.1.4** and `SYFT_VERSION` v1.52.0 → **v1.55.0** in `release.yml`. They are installed by `sigstore/cosign-installer` and `anchore/sbom-action`, which take a version only; both actions are already at their newest releases.
+- `GITLEAKS_VERSION` 8.30.1 is already the newest release.
+
+**Why:** the v0.3.0 release preparation found these three behind while `deps-current` passed: it watched only the PyPI-published pins. CONTRIBUTING's "Hand-maintained pins" list now names the workflow tools too.
+
+**Release notes read for how the workflows call each tool** (nothing affects us):
+- *OSV-Scanner v2.7.0:* JSON output gains `purl` where available (additive); `--experimental-` flags gain `--x-` aliases (we use none); exit codes unchanged. `scripts/osv-image-gate.py` reads the new output unchanged (below).
+- *cosign v3.1.4:* `sign` and `attest` now refuse several images, or `--recursive`, only together with `--bundle` (a local bundle file), which the release workflow does not pass. `--use-signing-config` is deprecated (unused). `verify` flags are unchanged.
+- *syft v1.54.0–v1.55.0 (there is no v1.53):* cataloger additions and fixes; no change to CycloneDX JSON output or to the options `sbom-action` passes.
+
+**deps-current:** a second table, `RELEASE_PINS`, maps each (workflow file, variable) to its GitHub repository; each pin must equal the tag of that repository's `releases/latest` (never a draft or a pre-release), compared with a leading `v` ignored (gitleaks is pinned without one). OSV-Scanner is checked in each of its three workflows, so one stale copy is reported by file. A pin that cannot be found is a problem; an unreachable API (including a rate-limit refusal) skips that repository with a notice, like PyPI. `GITHUB_TOKEN`, when set, is sent as a bearer token; `ci`'s deps-current step now passes `github.token` for that. Before the bumps, the script reported exactly the five stale pins (OSV-Scanner in three files, cosign, syft).
+
+**OSV image gate with v2.7.0** (its official image, by digest), on the per-platform archives of the v0.3.0 release image, judged by `scripts/osv-image-gate.py`: linux/amd64 and linux/arm64 both **0 blocking, 69 reported**, the same findings as v2.6.0.
+
+**Tests:** failing commit `826d8ad` (28 failed there: every test in `tests/test_deps_current.py`, since `check` gains the workflows mapping and the GitHub fetcher). The GitHub answers are invented fixtures and say so.
+
+**Versions:** `uv lock --upgrade` moved the dev dependency `types-pyyaml` 6.0.12.20260906 → 6.0.12.20261030 (released today); nothing else changed (52 packages). CPython 3.15.2 is the newest stable (3.16 is a pre-release). No dependency added; the script uses the standard library only.
+
+**Alternatives rejected:** Dependabot for these pins (it does not see version strings in `env:`); checking the OSV checksum against the release's checksums file in `deps-current` (the workflow's `sha256sum --check` already fails on a mismatch); a separate script for the GitHub pins (one D-013 gate is simpler to keep honest).
+
+**Deferred / follow-ups:** none.
+
+### 2026-10-30 — Release v0.3.0 (branch chore/release-0.3.0)
+**Decision:** Version 0.3.0 (`pyproject.toml`, `__version__`, `uv.lock`'s own entry). It ships the changes recorded since the v0.2.0 entry. New tools make this a minor release.
+- **Python 3.15 is required for source installs** (`requires-python`). The Docker image is the recommended install; README and CHANGELOG say so.
+- **Supported DockHand: 1.0.55.**
+- **Three new tools:** `dockhand_get_stack_stats` (read, #18), `dockhand_get_scheduled_actions` (read, #19) and `dockhand_set_scheduled_actions` (operator, #19). Tools: 100 (53 read, 37 operator, 10 destructive).
+- **Schedule allowlist:** `dockhand_run_schedule_now` and `dockhand_toggle_schedule` now accept `container_start` and `container_stop` (#19). Every other non-operator schedule type is still refused.
+- **Behaviour change in `dockhand_update_containers` (#20):** a container is reported `succeeded` only when nothing in DockHand's result says otherwise. Skipped, unverified and unknown containers are reported, and the call is `ok: false` (`operation_failed`) when any requested container was not confirmed updated.
+- **New `check` problem:** with a profile that registers `dockhand_set_scheduled_actions`, running in a container whose id this server cannot find is a `check` problem (outside a container, a warning).
+- **Security fix:** `opentelemetry-api` ≥ 1.45.1 (now 1.45.2) fixes unbounded tracestate parsing (the repository's first Dependabot alert).
+- Also since v0.2.0: mcp 2.3.0 and a dependency refresh (#21); the `ToolsOnlyServer` override removed (#21); Semgrep in `ci` runs on CPython 3.14 (#21); the `uv_build` 0.13 backend and `deps-current` coverage of hand-maintained pins (#23); the release tools OSV-Scanner v2.7.0, cosign v3.1.4 and syft v1.55.0, with `deps-current` now checking them and gitleaks (#27).
+- **Dependabot PRs merged without their own entry:** #17 bumps the GitHub Actions `astral-sh/setup-uv` 10.2.0 → 10.3.2, `docker/login-action` 4.6.0 → 4.7.0 and `anchore/sbom-action` 0.24.2 → 0.24.3 (each pinned by SHA); the release workflow's registry login and SBOM steps run these versions for the first time in this release. #22 bumps the Dockerfile's `astral-sh/uv` stage 0.12.19 → 0.13.6.
+
+OAuth resource-server mode is not part of this release. No server code changed in this PR.
+
+**Release mechanics, unchanged from v0.2.0:** `release.yml` on the `v0.3.0` tag. `v0.2.0` is the previous tag, so `release-notes.py` takes the entries whose headings are in the ARCHIVE at `v0.3.0` and not at `v0.2.0`: the DockHand API 1.0.55 entry through this one. `CHANGELOG.md` gains a 0.3.0 section from `scripts/release-notes.py changelog --previous-archive <ARCHIVE at v0.2.0>`, with hand edits for readability only: a summary of the release's user-visible changes after the heading, and #17 and #22 listed there. The section was regenerated after the release-tool pins entry (#27) merged, so it includes that entry. The README's status line now says v0.3.
+
+**Pre-release checks (local, on this branch):**
+- The full suite passes (2056 passed, 2 skipped).
+- Image built per platform with the release's build arguments: labels `version=0.3.0` and `source=https://github.com/tyler-rich/dockhand-mcp`, CPython 3.15.2. Under `ci`'s hardened-run flags it is `healthy`, `/healthz` answers `200 {"status":"ok"}`, and `/licenses/LICENSE` and `/licenses/NOTICE` match the repository's. Inside it, `dockhand-mcp check` with the `operator` profile does not report the own-container problem.
+- OSV-Scanner v2.7.0 (its official image, by digest) on per-platform docker archives, judged by `scripts/osv-image-gate.py`: **linux/amd64 and linux/arm64 both pass, 0 blocking, 69 reported**, the same as the 1.0.55 entry and as v2.6.0. No exception added; `osv-scanner.toml` still holds `IgnoredVulns = []`.
+- Live, read-only profile, against the built container with both token files mounted read-only and named by the `*_FILE` variables: `read.json` 56/56 in both `auto` and `legacy`, including `dockhand_get_stack_stats` and `dockhand_get_scheduled_actions`.
+
+**Versions:** `uv lock --upgrade` changed nothing after the rebase onto `dev` (52 packages): `mcp` 2.3.0, `mcp-types` 2.3.0, `httpx` 0.28.1, `httpx2` 2.16.0, `pydantic` 2.14.2, `pydantic-core` 2.50.2, `pydantic-settings` 2.16.2, `pyyaml` 6.0.3, `starlette` 1.10.0, `uvicorn` 0.54.0, `anyio` 4.15.1, `opentelemetry-api` 1.45.2; dev `ruff` 0.17.3, `mypy` 2.4.1, `pytest` 9.2.0, `pytest-asyncio` 1.4.1, `respx` 0.23.1, `types-pyyaml` 6.0.12.20261030. Release tooling: OSV-Scanner v2.7.0, cosign v3.1.4, syft v1.55.0, gitleaks 8.30.1. `scripts/deps-current.py` passes, including the release-tool pins. python.org's newest stable is 3.15.2 (3.16 is a pre-release), so there is no Python bump. No dependency was added.
+
+**Alternatives rejected:** a patch release (new tools and a behaviour change call for a minor bump).
+
+**Deferred / follow-ups:** none.

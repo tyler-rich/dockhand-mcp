@@ -19,6 +19,7 @@ from mcp.client.session import ElicitationFnT
 from mcp.client.streamable_http import streamable_http_client
 from starlette.applications import Starlette
 
+from dockhand_mcp.guardrails import self_container
 from dockhand_mcp.logging import set_redaction_secrets
 
 DOCKHAND_URL = "https://dockhand.example.test"
@@ -107,6 +108,17 @@ LEGACY = "2025-11-25"
 
 SetEnv = Callable[..., None]
 
+# The DockHand OpenAPI document is git-ignored. A throwaway worktree points DOCKHAND_MCP_SPEC_PATH
+# at the main clone's copy instead of copying it. Read at import: clean_env clears DOCKHAND_*.
+_SPEC_PATH_AT_IMPORT = os.environ.get("DOCKHAND_MCP_SPEC_PATH")
+DEFAULT_SPEC = Path(__file__).resolve().parents[1] / "docs" / "api" / "dockhand-openapi-1.0.55.json"
+
+
+def reference_spec() -> Path:
+    """The spec for the spec-dependent tests: the environment's path, else the repo-relative one."""
+    override = os.environ.get("DOCKHAND_MCP_SPEC_PATH") or _SPEC_PATH_AT_IMPORT
+    return Path(override) if override else DEFAULT_SPEC
+
 
 @pytest.fixture(autouse=True)
 def clean_env(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
@@ -114,6 +126,14 @@ def clean_env(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
         if name.upper().startswith("DOCKHAND_"):
             monkeypatch.delenv(name, raising=False)
     yield
+
+
+@pytest.fixture(autouse=True)
+def not_in_a_container(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The tests run as if this server were in no container, wherever they run (#19)."""
+    monkeypatch.setattr(self_container, "own_container_ids", frozenset)
+    outside = self_container.Identity(ids=frozenset(), in_container=False)
+    monkeypatch.setattr(self_container, "identify", lambda: outside)
 
 
 @pytest.fixture(autouse=True)

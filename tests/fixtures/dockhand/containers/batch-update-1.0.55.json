@@ -1,0 +1,29 @@
+{
+  "_comment": "Invented from the DockHand 1.0.55 spec schema (POST /api/containers/batch-update: each result may carry warnings[{status, message}]); not a recorded response. The status `warning` and the release-age advisory's wording follow DockHand 1.0.55's public source; the image, times and minutes are invented. {{NAME}} placeholders are filled at load time.",
+  "body": {
+    "success": true,
+    "results": [
+      {
+        "containerId": "{{CID_WEB}}",
+        "containerName": "web",
+        "success": true,
+        "warnings": [
+          {
+            "status": "warning",
+            "message": "This image digest of example/web:1 was created at 2026-10-01T00:00:00Z (30 minutes ago); 90 minutes remain in the automatic-update cooldown. Pulling it anyway because this was requested manually."
+          }
+        ]
+      },
+      {
+        "containerId": "{{CID_DB}}",
+        "containerName": "db",
+        "success": true
+      }
+    ],
+    "summary": {
+      "total": 2,
+      "success": 2,
+      "failed": 0
+    }
+  }
+}

@@ -10,14 +10,15 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+import conftest
 import pytest
+from conftest import reference_spec
 
 import dockhand_mcp.tools
 from dockhand_mcp.tools.registry import REGISTRY, Profile, RegisteredTool, Tier
 
 ROOT = Path(__file__).resolve().parents[1]
 ENDPOINT_MAP = ROOT / "docs" / "api" / "ENDPOINT-MAP.md"
-REFERENCE_SPEC = ROOT / "docs" / "api" / "dockhand-openapi-1.0.49.json"
 GENERATOR = ROOT / "scripts" / "gen-endpoint-map.py"
 ENV_REQUIRED_MODULE = ROOT / "src" / "dockhand_mcp" / "client" / "env_required.py"
 ROW = re.compile(r"^\| `(?P<method>[A-Z]+)` \| `(?P<path>[^`]+)` \| \*\*(?P<tier>[a-z]+)\*\* \|")
@@ -76,9 +77,10 @@ def _generator() -> Any:
 
 def test_map_is_generated_from_the_reference_spec(capsys: pytest.CaptureFixture[str]) -> None:
     """The committed map is the generator's output for the local, git-ignored reference spec."""
-    if not REFERENCE_SPEC.exists():
-        pytest.skip(f"{REFERENCE_SPEC.name} is not present (git-ignored)")
-    _generator().main(str(REFERENCE_SPEC))
+    spec = reference_spec()
+    if not spec.exists():
+        pytest.skip(f"{spec.name} is not present (git-ignored; set DOCKHAND_MCP_SPEC_PATH)")
+    _generator().main(str(spec))
     assert capsys.readouterr().out == ENDPOINT_MAP.read_text(encoding="utf-8")
 
 
@@ -86,9 +88,10 @@ def test_env_required_is_generated_from_the_reference_spec(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """The client's list of env-required operations is the generator's output for the spec (#5)."""
-    if not REFERENCE_SPEC.exists():
-        pytest.skip(f"{REFERENCE_SPEC.name} is not present (git-ignored)")
-    _generator().main(str(REFERENCE_SPEC), env_required=True)
+    spec = reference_spec()
+    if not spec.exists():
+        pytest.skip(f"{spec.name} is not present (git-ignored; set DOCKHAND_MCP_SPEC_PATH)")
+    _generator().main(str(spec), env_required=True)
     assert capsys.readouterr().out == ENV_REQUIRED_MODULE.read_text(encoding="utf-8")
 
 
@@ -177,3 +180,97 @@ def test_exec_run_and_chown_are_unreachable(
     # No tool tier may declare it, so a tool that tried would fail registration's map check.
     for tier in Tier:
         assert violations(_entry(tier, endpoint), emap) != []
+
+
+# The operations DockHand 1.0.55 added, with the tier each was given (ARCHIVE §14, 1.0.55).
+NEW_EXCLUDED_IN_1_0_55: tuple[tuple[str, str], ...] = (
+    # passkey sign-in and registration (auth) and the user's own passkeys (profile)
+    ("POST", "/api/auth/passkeys/login/options"),
+    ("POST", "/api/auth/passkeys/login/verify"),
+    ("POST", "/api/auth/passkeys/register/options"),
+    ("POST", "/api/auth/passkeys/register/verify"),
+    ("GET", "/api/profile/passkeys"),
+    ("DELETE", "/api/profile/passkeys/{id}"),
+    # UI preferences
+    ("GET", "/api/preferences/environment-order"),
+    ("POST", "/api/preferences/environment-order"),
+    ("DELETE", "/api/preferences/environment-order"),
+    ("GET", "/api/preferences/language"),
+    ("PUT", "/api/preferences/language"),
+    ("GET", "/api/preferences/tag-order"),
+    ("POST", "/api/preferences/tag-order"),
+    ("DELETE", "/api/preferences/tag-order"),
+    # the global default secret provider
+    ("GET", "/api/secret-providers/default"),
+    ("PUT", "/api/secret-providers/default"),
+    # environment state reports: the export and the scheduled-report configuration
+    ("GET", "/api/environments/report"),
+    ("GET", "/api/environments/{id}/report"),
+    ("POST", "/api/environments/{id}/report"),
+)
+NEW_IN_1_0_55: dict[tuple[str, str], str] = {
+    **dict.fromkeys(NEW_EXCLUDED_IN_1_0_55, "excluded"),
+    ("GET", "/api/stack-stats"): "read",
+    ("GET", "/api/scheduled-actions/{containerName}"): "read",
+    ("PUT", "/api/scheduled-actions/{containerName}"): "operator",
+    ("GET", "/api/settings/minimum-release-age"): "read",
+    ("POST", "/api/settings/minimum-release-age"): "admin",
+    ("GET", "/api/settings/pinned-digest-report"): "read",
+    ("POST", "/api/settings/pinned-digest-report"): "admin",
+}
+
+
+def test_operations_new_in_1_0_55_are_classified(emap: dict[tuple[str, str], str]) -> None:
+    assert len(NEW_IN_1_0_55) == 26
+    assert {k: emap.get(k) for k in NEW_IN_1_0_55} == NEW_IN_1_0_55
+
+
+def test_new_settings_operations_have_the_tiers_of_existing_settings_operations(
+    emap: dict[tuple[str, str], str],
+) -> None:
+    assert emap[("GET", "/api/settings/semver")] == "read"
+    assert emap[("POST", "/api/settings/semver")] == "admin"
+    for name in ("minimum-release-age", "pinned-digest-report"):
+        assert emap[("GET", f"/api/settings/{name}")] == emap[("GET", "/api/settings/semver")]
+        assert emap[("POST", f"/api/settings/{name}")] == emap[("POST", "/api/settings/semver")]
+
+
+@pytest.mark.parametrize("profile", list(Profile))
+@pytest.mark.parametrize("endpoint", NEW_EXCLUDED_IN_1_0_55)
+def test_operations_excluded_in_1_0_55_are_unreachable(
+    emap: dict[tuple[str, str], str], profile: Profile, endpoint: tuple[str, str]
+) -> None:
+    assert emap.get(endpoint) == "excluded"
+    for tool in REGISTRY.tools_for_profile(profile):
+        assert endpoint not in tool.endpoints, tool.name
+    # No tool tier may declare it, so a tool that tried would fail registration's map check.
+    for tier in Tier:
+        assert violations(_entry(tier, endpoint), emap) != []
+
+
+@pytest.mark.parametrize("endpoint", list(NEW_IN_1_0_55))
+def test_only_the_adopted_operations_new_in_1_0_55_have_a_tool(endpoint: tuple[str, str]) -> None:
+    adopted = {
+        ("GET", "/api/stack-stats"): {"dockhand_get_stack_stats"},  # #18
+        # #19: the read tool, and the set tool's pre-write check and read-back.
+        ("GET", "/api/scheduled-actions/{containerName}"): {
+            "dockhand_get_scheduled_actions",
+            "dockhand_set_scheduled_actions",
+        },
+        ("PUT", "/api/scheduled-actions/{containerName}"): {"dockhand_set_scheduled_actions"},
+    }
+    callers = {tool.name for tool in REGISTRY.all() if endpoint in tool.endpoints}
+    assert callers == adopted.get(endpoint, set())
+
+
+def test_spec_path_comes_from_the_environment(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """DOCKHAND_MCP_SPEC_PATH locates the spec, so a worktree needs no copy of it."""
+    spec = tmp_path / "spec-copy.json"
+    spec.write_text("{}", encoding="utf-8")
+    monkeypatch.setenv("DOCKHAND_MCP_SPEC_PATH", str(spec))
+    assert reference_spec() == spec
+    monkeypatch.delenv("DOCKHAND_MCP_SPEC_PATH")
+    monkeypatch.setattr(conftest, "_SPEC_PATH_AT_IMPORT", None)  # as if unset at pytest start
+    assert reference_spec() == ROOT / "docs" / "api" / "dockhand-openapi-1.0.55.json"

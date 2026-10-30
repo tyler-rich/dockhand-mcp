@@ -9,7 +9,6 @@ the environment it was given. These guard against regression: no tool omitted it
 
 import json
 import re
-from pathlib import Path
 from typing import Any
 
 import pytest
@@ -17,15 +16,12 @@ import respx
 import test_destructive_tools as destructive
 import test_operator_tools as operator
 import test_read_tools as read
-from conftest import ENV, SetEnv
+from conftest import ENV, SetEnv, reference_spec
 
 from dockhand_mcp.tools.registry import REGISTRY, Tier
 
-REFERENCE_SPEC = (
-    Path(__file__).resolve().parents[1] / "docs" / "api" / "dockhand-openapi-1.0.49.json"
-)
-
-# Every operation in the 1.0.49 spec with a required environment query parameter.
+# Every operation in the 1.0.55 spec with a required environment query parameter. 1.0.55 added
+# three (stack-stats and the two scheduled-actions operations); no existing one changed.
 ENV_REQUIRED: dict[tuple[str, str], str] = {
     ("POST", "/api/containers/batch-update"): "env",
     ("POST", "/api/containers/batch-update-stream"): "env",
@@ -66,6 +62,9 @@ ENV_REQUIRED: dict[tuple[str, str], str] = {
     ("GET", "/api/containers/{id}/version-notes"): "env",
     ("GET", "/api/preferences/favorite-groups"): "env",
     ("GET", "/api/preferences/favorites"): "env",
+    ("GET", "/api/scheduled-actions/{containerName}"): "env",
+    ("PUT", "/api/scheduled-actions/{containerName}"): "env",
+    ("GET", "/api/stack-stats"): "env",
     ("GET", "/api/system/disk"): "env",
 }
 
@@ -91,9 +90,10 @@ def template_of(method: str, path: str) -> tuple[str, str] | None:
 
 
 def test_list_matches_the_reference_spec() -> None:
-    if not REFERENCE_SPEC.exists():
-        pytest.skip(f"{REFERENCE_SPEC.name} is not present (git-ignored)")
-    spec = json.loads(REFERENCE_SPEC.read_text(encoding="utf-8"))
+    path = reference_spec()
+    if not path.exists():
+        pytest.skip(f"{path.name} is not present (git-ignored; set DOCKHAND_MCP_SPEC_PATH)")
+    spec = json.loads(path.read_text(encoding="utf-8"))
     found = {
         (method.upper(), path): p["name"]
         for path, ops in spec["paths"].items()
@@ -125,12 +125,15 @@ def test_the_container_endpoints_tools_use_are_covered() -> None:
         "dockhand_get_container_sizes",
         "dockhand_get_container_stats",
         "dockhand_get_pending_updates",
+        "dockhand_get_scheduled_actions",
+        "dockhand_get_stack_stats",
         "dockhand_get_system_info",
         "dockhand_get_version_notes",
         "dockhand_pause_container",
         "dockhand_remove_container",
         "dockhand_rename_container",
         "dockhand_restart_container",
+        "dockhand_set_scheduled_actions",
         "dockhand_start_container",
         "dockhand_stop_container",
         "dockhand_unpause_container",

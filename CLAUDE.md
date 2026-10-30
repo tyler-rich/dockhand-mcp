@@ -11,7 +11,7 @@ You are working on **dockhand-mcp**, a security-first MCP server that exposes a 
 5. `docs/ARCHIVE.md` §14 — **all** entries: what previous sessions decided and why.
 6. The session prompt you were given (pasted as the first message), and any handoff doc it names.
 
-The **source of truth for DockHand's API is `docs/api/dockhand-openapi-1.0.49.json`** (the raw `/api/docs` document). It is git-ignored and never committed; depending on the session it is either attached to your first message or already present at that path. If you need it and have neither, STOP and ask for it. Not the manual, not the reference implementation, not this file's paraphrases. When the prompt, an issue, or your own assumption disagrees with the spec, the spec wins — and if the spec looks wrong or ambiguous, STOP and ask.
+The **source of truth for DockHand's API is `docs/api/dockhand-openapi-1.0.55.json`** (the raw `/api/docs` document). It is git-ignored and never committed; depending on the session it is either attached to your first message or already present at that path. If you need it and have neither, STOP and ask for it. Not the manual, not the reference implementation, not this file's paraphrases. When the prompt, an issue, or your own assumption disagrees with the spec, the spec wins — and if the spec looks wrong or ambiguous, STOP and ask.
 
 ## Hard rules (these are not preferences)
 
@@ -41,7 +41,7 @@ Stop and ask the maintainer before continuing if you would need to:
 
 ## Engineering standard
 
-- Python: the **latest stable CPython series** (3.14 today; see `plan.md` D-001/D-013). `uv`, `ruff` (lint+format), `mypy --strict`, `pytest` + `pytest-asyncio` + `respx` for HTTP mocking. `uv run` for everything; never `pip install` into the system.
+- Python: the **latest stable CPython series** (3.15 today; see `plan.md` D-001/D-013). `uv`, `ruff` (lint+format), `mypy --strict`, `pytest` + `pytest-asyncio` + `respx` for HTTP mocking. `uv run` for everything; never `pip install` into the system.
 - **Latest-everything (D-013):** at the start of every session run `uv lock --upgrade && uv sync` and commit the lockfile change if any; check python.org for a newer stable minor than `requires-python` and, if one exists, bump `requires-python`, the base image, and CI in *this* PR (or STOP and ask if that bump breaks a dependency). Never add a dependency at anything but its newest stable version. Never pin a GitHub Action to anything but the SHA of its newest release. Never use a pre-release. Record the versions you ended up with in the ARCHIVE entry.
 - Licensing (D-015): every source file you create under `src/`, `tests/` or `scripts/` starts with `# SPDX-License-Identifier: Apache-2.0` (after any shebang). Never edit `LICENSE` or `NOTICE`, never add a dependency whose license is not permissive and Apache-2.0-compatible (GPL/AGPL/LGPL/SSPL/BUSL and similar → STOP and ask), and never copy code from another project without stating its license and origin in the PR.
 - Every tool declares, at registration, the DockHand `(method, path-template)` pairs it calls. The endpoint-map test and the respx tests enforce that a tool calls nothing it didn't declare and declares nothing above its tier.
@@ -60,7 +60,7 @@ The maintainer reviews and merges; **you do all the running and checking** and p
 2. Do the work. Keep commits small and conventional (`feat(tools): add dockhand_list_stacks`). Commit failing tests before the code that makes them pass, and note that commit's hash.
 3. Add the dated entry to `docs/ARCHIVE.md` §14: what changed, why, alternatives rejected, anything deferred.
 4. Run the full local suite: `uv sync --frozen && uv run ruff check . && uv run ruff format --check . && uv run mypy --strict src && uv run pytest -q`. Everything must pass before you open the PR.
-5. **Prove the failing tests fail.** In a throwaway worktree, so your branch is untouched: `git worktree add ../dmcp-failcheck <failing-test-commit>`, run `uv run pytest -q` there, record the failure count and which tests failed, then `git worktree remove --force ../dmcp-failcheck`. If nothing fails at that commit, the tests aren't proving anything: fix them before continuing.
+5. **Prove the failing tests fail.** In a throwaway worktree, so your branch is untouched: `git worktree add ../dmcp-failcheck <failing-test-commit>`, set `DOCKHAND_MCP_SPEC_PATH` to the main clone's spec file instead of copying it, run `uv run pytest -q` there, record the failure count and which tests failed, then `git worktree remove --force ../dmcp-failcheck`. If nothing fails at that commit, the tests aren't proving anything: fix them before continuing.
 6. Run the **live checks** your prompt lists, if any (rules below).
 7. `gh pr create --base dev --title "…" --body-file <file>`. Fill the PR template. Confirm the base with `gh pr view --json baseRefName`. **Do not merge.**
 8. Strip any AI attribution footer from the PR body with **one** `gh pr edit --body-file` attempt, then re-read the live body (`gh pr view --json body -q .body`). The PR body describes the change only: never the session's own process (identity checks, footer status, merge permissions, stop-condition commentary). That belongs in your chat summary.

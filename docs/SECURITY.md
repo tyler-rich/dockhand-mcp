@@ -93,6 +93,7 @@ Two of the three may not be combined in v1 (no "OAuth or bearer" fallback) — a
 | UI cosmetics | icons, dashboard/sidebar/grid preferences, theme, navigation, config-sets, templates, labels | No operational value; increases surface for nothing. |
 | Self-update, debug, metrics, webhooks | `/api/self-update/**`, `/api/debug/**`, `/metrics`, `/api/git/**/webhook` | Replacing the DockHand binary from an LLM session; memory diagnostics; webhook secrets. |
 | Git env preview | `POST /api/git/preview-env`, `POST /api/git/stacks/{id}/env-files` | Returns parsed env values from a repo checkout, including secrets committed to git. |
+| Environment state reports | `GET /api/environments/report`, `/api/environments/{id}/report` | A bulk export (a downloadable file) of every accessible environment's inventory and known vulnerabilities, with the audit history on Enterprise; the schedule mails it out of the installation unattended. |
 
 ## 5. Compose guardrails (`guardrails/compose.py`)
 

@@ -51,6 +51,7 @@
   {"tool": "dockhand_get_schedule_execution", "args": {"execution_id": "${execution}", "max_bytes": 8192}, "expect": {"ok": true}},
   {"tool": "dockhand_get_auto_update_settings", "args": {"environment_id": "${env}"}, "expect": {"ok": true}},
   {"tool": "dockhand_get_auto_update_settings", "args": {"environment_id": "${env}", "container_name": "${container}"}, "expect": {"ok": true}},
+  {"tool": "dockhand_get_scheduled_actions", "args": {"environment_id": "${env}", "container": "${container}"}, "expect": {"ok": true, "equals": {"data.container.name": "${container}"}}},
 
   {"tool": "dockhand_list_vulnerabilities", "args": {"environment_id": "${env}", "limit": 5}, "expect": {"ok": true}},
   {"tool": "dockhand_get_vulnerability_summary", "args": {"environment_id": "${env}"}, "expect": {"ok": true}},
@@ -63,5 +64,6 @@
   {"tool": "dockhand_list_git_repositories", "expect": {"ok": true}},
   {"tool": "dockhand_list_git_stacks", "args": {"environment_id": "${env}"}, "expect": {"ok": true}},
 
-  {"tool": "dockhand_list_tags", "args": {"environment_id": "${env}"}, "expect": {"ok": true}}
+  {"tool": "dockhand_list_tags", "args": {"environment_id": "${env}"}, "expect": {"ok": true}},
+  {"tool": "dockhand_get_stack_stats", "args": {"environment_id": "${env}", "sort_by": "memory", "limit": 5}, "expect": {"ok": true, "equals": {"data.sort_by": "memory"}}}
 ]

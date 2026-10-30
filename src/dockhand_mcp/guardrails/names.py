@@ -204,6 +204,12 @@ async def resolve_container(client: DockhandClient, env: int, ref: str) -> Conta
     """Resolve a container ID or exact name via `GET /api/containers?env&all=true`."""
     validate_container_ref(ref)
     items = await _list(client, "/api/containers", {"env": env, "all": True})
+    return container_from(items, ref)
+
+
+def container_from(items: list[Any], ref: str) -> ContainerRef:
+    """Resolve a container ID or exact name in a container list the caller already read."""
+    validate_container_ref(ref)
     item_id, name = _by_id_or_name(items, ref, "container")
     return ContainerRef(item_id, name)
 

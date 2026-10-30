@@ -405,6 +405,32 @@
     "output_schema_sha256": "c572be267ccb164844eae24f8fe9e2b7795152a7df41fd2bf7797fac1f7f3104"
   },
   {
+    "name": "dockhand_get_scheduled_actions",
+    "title": "Get scheduled container start and stop",
+    "tier": "read",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "GET",
+        "/api/containers"
+      ],
+      [
+        "GET",
+        "/api/stacks"
+      ],
+      [
+        "GET",
+        "/api/scheduled-actions/{containerName}"
+      ]
+    ],
+    "description": "Get a container's scheduled start and stop times, whether the schedule is enabled, whether its labels set it, and when it last started or stopped on schedule.",
+    "input_schema_sha256": "6a6f1797ff5dbc1e2fd2146428caeb931440c58d7f4c319ed836e671c2ff0d87",
+    "output_schema_sha256": "b8b6e786fe679e26365bd2700f6fc8f770d5c567036b411d4895abdeb8430272"
+  },
+  {
     "name": "dockhand_get_settings",
     "title": "Get settings",
     "tier": "read",
@@ -535,6 +561,24 @@
     "description": "Show where stack files live: the stacks base directory, stored compose and .env paths per stack, and for one stack its default path and container label hints.",
     "input_schema_sha256": "893aafed416217234399e4537b2caa468965cbd0f97fdb5cc56156733b3864cc",
     "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_get_stack_stats",
+    "title": "Get stack stats",
+    "tier": "read",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "GET",
+        "/api/stack-stats"
+      ]
+    ],
+    "description": "Get CPU, memory, network and block I/O totals for each compose stack in an environment, summed over its running containers. Returns stacks heaviest first.",
+    "input_schema_sha256": "84e7b22e84345e942162da2dfd1d10490f974659b709cdeaed833c96d50fb7bf",
+    "output_schema_sha256": "eb67ee98693805d9e362d39aeec37668efb064da962c50f6c893fbfddd6f70a8"
   },
   {
     "name": "dockhand_get_system_info",

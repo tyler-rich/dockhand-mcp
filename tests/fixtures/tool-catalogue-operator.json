@@ -463,8 +463,8 @@
         "/api/schedules/{type}/{id}/run"
       ]
     ],
-    "description": "Run one container-update, git-stack-sync or environment-update-check schedule once, outside its cron. Returns DockHand's result message.",
-    "input_schema_sha256": "6abc6cc3c074b55d8a5a956986c5ba723057c45629cd0f9a38ab9cd53a21289b",
+    "description": "Run one container-update, container start or stop, git-stack-sync or environment-update-check schedule once, outside its cron. Returns DockHand's result message.",
+    "input_schema_sha256": "9c101dcbec5a4ec9e1bacf558948667f68b2d6e3f8ff629183d33990db309976",
     "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
   },
   {
@@ -540,6 +540,36 @@
     "description": "Enable, change or remove automatic image updates for a container. Returns the stored setting.",
     "input_schema_sha256": "9b2153106c128f9d194bd6efceffc37a41ba7d68ca631025fec6af0a547e5517",
     "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+  },
+  {
+    "name": "dockhand_set_scheduled_actions",
+    "title": "Set scheduled container start and stop",
+    "tier": "operator",
+    "endpoints": [
+      [
+        "GET",
+        "/api/environments"
+      ],
+      [
+        "GET",
+        "/api/containers"
+      ],
+      [
+        "GET",
+        "/api/stacks"
+      ],
+      [
+        "GET",
+        "/api/scheduled-actions/{containerName}"
+      ],
+      [
+        "PUT",
+        "/api/scheduled-actions/{containerName}"
+      ]
+    ],
+    "description": "Set a container's scheduled start and stop times, HH:MM daily or five-field cron; giving neither removes the schedule. Returns the schedule as read back.",
+    "input_schema_sha256": "93dbc14ba1cc72fa3850a69b3fcd34ad6cca686b2a9560bdbe6813c3655feb2e",
+    "output_schema_sha256": "b8b6e786fe679e26365bd2700f6fc8f770d5c567036b411d4895abdeb8430272"
   },
   {
     "name": "dockhand_start_container",
@@ -735,8 +765,8 @@
         "/api/schedules/system/{id}/toggle"
       ]
     ],
-    "description": "Enable a disabled schedule or disable an enabled one. Returns whether it is now enabled.",
-    "input_schema_sha256": "edf03be4acdad455bd7a15b81c7f596358c290a711c99b92c8982663a74dba8b",
+    "description": "Enable a disabled schedule or disable an enabled one; a container's start and stop times switch together. Returns whether it is now enabled.",
+    "input_schema_sha256": "d75c8de9b77f566b172f4db4d56d9005e10ad683c0af036d5fb0f57f3341b9bb",
     "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
   },
   {
@@ -783,9 +813,9 @@
         "/api/containers/batch-update"
       ]
     ],
-    "description": "Recreate containers with their latest images, keeping their configuration. Refuses the whole call if any carries the label dockhand.update=false.",
+    "description": "Recreate containers with their latest images, keeping their configuration, and return each container's outcome. Refuses the whole call if any carries the label dockhand.update=false; any container failed, skipped or not confirmed updated fails it.",
     "input_schema_sha256": "27c302c32c71ad0946277bc16841cb3512d40257561158e07e0750df7c538bf9",
-    "output_schema_sha256": "515be9b8127e21ce005f73e83d28110dbb95a1df004fc9acfdbb873c1038ff12"
+    "output_schema_sha256": "66e23b9b905e8aaf3bf983c234d8f7a409bd7e2e512fda0242ee26b9ab4c536b"
   },
   {
     "name": "dockhand_update_stack_compose",

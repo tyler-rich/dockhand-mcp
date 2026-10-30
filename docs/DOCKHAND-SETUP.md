@@ -27,34 +27,36 @@ profile's user.
 
 The tables below are built from each tool's declared endpoints (`dockhand-mcp tools` prints them)
 and the **Perm** column of [`docs/api/ENDPOINT-MAP.md`](api/ENDPOINT-MAP.md), which records the
-permission strings DockHand's API document (v1.0.49) states for each endpoint. Many endpoints state
+permission strings DockHand's API document (v1.0.55) states for each endpoint. Many endpoints state
 none. Those rows say **verify**: the name given is the closest permission the document uses
 elsewhere, so check in DockHand's role editor which permission gates that area, and confirm with
 `dockhand-mcp check` (step 5) and a first call of the tools involved.
 
 Each profile includes everything in the profiles above it.
 
-**`read-only`** (51 read tools)
+**`read-only`** (53 read tools)
 
 | Permission | Needed for | Source |
 |---|---|---|
 | `environments:view` | Every environment-scoped tool resolves `environment_id` | spec |
-| `stacks:view` | Stack list, compose, `.env`, variables, deploy runs, git stacks, stack validation | spec |
+| `stacks:view` | Stack list, compose, `.env`, variables, deploy runs, git stacks, stack validation, stack paths | spec |
+| `stacks:edit` | Only the path hints in `dockhand_get_stack_paths` (`GET /api/stacks/path-hints`). Don't grant it to a read-only role for this: without it the tool reports the path hints under `errors` and returns the rest. | spec |
 | `volumes:view`, `volumes:inspect` | `dockhand_list_volumes`, `dockhand_get_volume` | spec |
 | `activity:view` | `dockhand_get_activity`, `dockhand_get_activity_stats` | spec |
 | `git:view` | Git repository tools | spec |
 | `registries:view` | Registry browsing tools | spec |
-| `settings:view` | `dockhand_get_settings` (scanner part), database health | spec |
+| `settings:view` | `dockhand_get_settings` (general, scanner and semver settings), database health | spec |
 | `stacks:remove` | `dockhand_preview_stack_delete` only (DockHand gates the preview with the delete permission). If you'd rather not grant it, leave it out and set `DOCKHAND_MCP_DISABLE_TOOLS=dockhand_preview_stack_delete`. | spec |
-| `containers:view`, `stacks:view` | `dockhand_list_tags` (the tag catalogue and container tags need `containers:view`, stack tags `stacks:view`) | spec |
+| `containers:view`, `stacks:view` | `dockhand_list_tags` (the tag catalogue and container tags need `containers:view`, stack tags `stacks:view`); `dockhand_get_stack_stats` (needs both) | spec |
 | `containers:view`, `containers:logs` | Container list, inspect, logs, stats, top, sizes, generated compose, pending updates | **verify** |
 | images (view) | Image list, history, scan results, vulnerabilities | **verify** |
 | networks (view) | Network list and inspect | **verify** |
-| `schedules:view` | Schedules and their executions | **verify** |
+| `schedules:view` | Schedule list, auto-update settings | spec |
+| `schedules:view` | Schedule executions; `dockhand_get_scheduled_actions` (its 403 names no permission) | **verify** |
 | system/host (view) | Host info, system info, disk usage, job status | **verify** |
 | audit (view) | `dockhand_get_audit_log` (the audit log is Enterprise-only) | **verify** |
 
-**`operator`** (adds 36 operator tools)
+**`operator`** (adds 37 operator tools)
 
 | Permission | Needed for | Source |
 |---|---|---|
@@ -66,6 +68,7 @@ Each profile includes everything in the profiles above it.
 | `volumes:create` | Create and clone volumes | spec |
 | `git:edit` | Git repository sync and deploy | spec |
 | `settings:edit` | Toggling a *system* schedule only. Leave it out if you don't need that. | spec |
+| `schedules:edit`, `containers:start`, `containers:stop` | `dockhand_set_scheduled_actions` (needs all three). Running a `container_start` or `container_stop` schedule also needs `containers:start` / `containers:stop`; switching one on with `dockhand_toggle_schedule` needs both. | spec |
 | `containers:edit` | Container start, stop, restart, pause, unpause, rename, batch operations, image updates, auto-update settings | **verify** |
 | stacks (stop) | Stack start and stop (`POST …/start`, `…/stop` state no permission) | **verify** |
 | images (edit) | Image pull, tag, scan, scan-all | **verify** |
@@ -163,6 +166,8 @@ It validates the configuration, talks to DockHand with the token, prints a JSON 
 | stderr `warning: Environments X (…) and Y (…) appear to share one Docker daemon…` | Two environments list the same containers: see [Environments and Docker daemons](#environments-and-docker-daemons) | No such line |
 | stderr `warning: cannot compare environment …` | That environment's containers couldn't be listed, so the shared-daemon check skipped it | No such line |
 | stderr `warning: the token's user cannot list environments (HTTP 403)` | The token works but the role lacks `environments:view` | No such line |
+| `problems`: `cannot identify own container; scheduled stops cannot be refused for it (this server appears to run in a container…)` | `operator`/`admin` only (the profiles with `dockhand_set_scheduled_actions`). The server runs in a container but cannot find that container's id, so it cannot refuse a scheduled stop of itself. Stops are not refused because of it; the line makes the gap visible (exit code `1`). `serve` logs the same line as a WARN at startup | See [This server's own container](#this-servers-own-container) |
+| stderr `warning: cannot identify own container; scheduled stops cannot be refused for it, if this server runs in a container…` | The same, when no container was detected at all, e.g. `check` or `stdio` on a workstation, where there is nothing to protect | No such line when it runs in a container |
 
 `check` is best effort about permissions: it probes one list per area, not every endpoint a tool
 uses. After `check` is clean, call one tool of each kind you rely on.
@@ -189,6 +194,27 @@ that is not tracked in the requested environment, and `dockhand_create_stack` re
 is already a compose project on that daemon (in the stack list or in any container's labels). It
 cannot undo a duplicate created outside it. `dockhand-mcp check` prints a warning when two
 environments share container ids. If you see it, fix the DockHand side: one environment per daemon.
+
+## This server's own container
+
+`dockhand_set_scheduled_actions` refuses to schedule a **stop** for DockHand's own container (and
+Hawser agents, which DockHand reports as system containers) and for the container dockhand-mcp
+itself runs in: either would cut off management access. To recognise its own container, the
+server reads its own mount table (`/proc/self/mountinfo`): Docker and Podman mount a file named
+after the container id on `/etc/hostname`. If that names no id, it falls back to the hostname,
+which Docker sets to the id's first 12 characters by default.
+
+So keep it identifiable:
+
+- Run it under Docker or Podman, as the reference compose file does.
+- **Don't override `hostname:`** in its compose service (or `--hostname`). The mount table usually
+  still names the id, but the hostname is the fallback when it doesn't.
+
+If neither works, the protection cannot apply: the server still starts and still allows the stop,
+but `serve` logs a WARN at startup and `dockhand-mcp check` reports
+`cannot identify own container; scheduled stops cannot be refused for it` (a problem when it
+detects a container, a warning when it detects none). Neither appears in the `read-only` profile,
+or with `DOCKHAND_MCP_DISABLE_TOOLS=dockhand_set_scheduled_actions`.
 
 ## Keeping secrets out of compose files
 
