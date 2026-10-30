@@ -556,6 +556,10 @@
       ],
       [
         "GET",
+        "/api/stacks"
+      ],
+      [
+        "GET",
         "/api/scheduled-actions/{containerName}"
       ],
       [

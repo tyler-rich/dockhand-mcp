@@ -12,6 +12,14 @@ check); and a stop is refused for a container DockHand reports as a system conta
 itself or a Hawser agent) and for the container this server runs in
 (`guardrails/self_container.py`), since stopping either cuts off management access. The schedule
 is then read back and compared.
+
+One Docker daemon can serve several DockHand environments; each then lists the same containers,
+but a schedule is stored, and shown, under the environment it was set through. So before any
+write (maintainer decision, #19): a container whose compose project is a stack tracked in the
+requested environment is allowed; otherwise one that no other environment lists (by id) is
+allowed, which covers every container on a deployment with one daemon per environment; otherwise
+the call is refused, naming the other environments. A stack or container list that cannot be read
+refuses too. The read tool answers in every case, with that reason as a warning.
 """
 
 from typing import Annotated, Any, Final
@@ -19,8 +27,10 @@ from typing import Annotated, Any, Final
 from pydantic import Field, StringConstraints
 
 from dockhand_mcp.client.envelope import Envelope, ErrorInfo, ok
+from dockhand_mcp.client.errors import DockhandError
 from dockhand_mcp.guardrails import self_container
-from dockhand_mcp.guardrails.names import ContainerRef, resolve_container
+from dockhand_mcp.guardrails.names import ContainerRef, container_from
+from dockhand_mcp.tools import _stackguard as stackguard
 from dockhand_mcp.tools._common import (
     EnvScoped,
     EnvWriteInputs,
@@ -28,6 +38,7 @@ from dockhand_mcp.tools._common import (
     as_dict,
     env_tool,
     fail,
+    list_body,
     run_async_pattern,
     write_budget,
 )
@@ -72,6 +83,77 @@ def _container(ref: ContainerRef) -> dict[str, str]:
     return {"id": ref.id, "name": ref.name}
 
 
+async def _containers(ctx: ToolContext, env: int) -> list[Any]:
+    return list_body(await ctx.client.get_json(LIST[1], params={"env": env, "all": True}))
+
+
+def _item_id(item: Any) -> str:
+    return str(item.get("id") or item.get("Id") or "") if isinstance(item, dict) else ""
+
+
+def _project(items: list[Any], ref: ContainerRef) -> str | None:
+    for item in items:
+        if _item_id(item) == ref.id:
+            labels = item.get("labels") or item.get("Labels")
+            project = labels.get(stackguard.PROJECT_LABEL) if isinstance(labels, dict) else None
+            return project if isinstance(project, str) and project else None
+    return None
+
+
+async def _tracks(ctx: ToolContext, env: int, project: str) -> bool:
+    stacks = list_body(await ctx.client.get_json(stackguard.LIST[1], params={"env": env}))
+    return any(
+        isinstance(item, dict) and item.get("name") == project and stackguard.is_tracked(item)
+        for item in stacks
+    )
+
+
+async def _elsewhere(ctx: ToolContext, env: int, items: list[Any], ref: ContainerRef) -> str | None:
+    """Why a schedule set through `env` could act on another environment's container, or None.
+
+    Reads this environment's stack list, then, unless it tracks the container's stack, the
+    environment list and every other environment's container list (one each).
+    """
+    project = _project(items, ref)
+    try:
+        if project is not None and await _tracks(ctx, env, project):
+            return None
+        envs = list_body(await ctx.client.get_json(ENVIRONMENTS[1]))
+    except DockhandError as e:
+        return f"could not read the stack and environment lists ({e.message})"
+    ids = {i["id"] for i in envs if isinstance(i, dict) and isinstance(i.get("id"), int)}
+    others: list[int] = []
+    for other in sorted(ids - {env}):
+        try:
+            listed = await _containers(ctx, other)
+        except DockhandError as e:
+            return f"could not read environment {other}'s container list ({e.message})"
+        if any(_item_id(item) == ref.id for item in listed):
+            others.append(other)
+    if not others:
+        return None
+    trackers: list[int] = []
+    for other in others:
+        try:
+            if project is not None and await _tracks(ctx, other, project):
+                trackers.append(other)
+        except DockhandError:
+            continue  # only names the tracking environment in the message
+    if project is None:
+        stack = "it belongs to no stack"
+    elif trackers:
+        where = ", ".join(map(str, trackers))
+        stack = f"its stack {project} is tracked in environment {where}, not in {env}"
+    else:
+        stack = f"its stack {project} is not tracked in environment {env}"
+    listed_in = ", ".join(map(str, others))
+    return (
+        f"{ref.name} is also listed in environment {listed_in} (one Docker daemon serves them), "
+        f"and {stack}; a schedule set through environment {env} would act on it without showing "
+        "there"
+    )
+
+
 async def _schedule(ctx: ToolContext, ref: ContainerRef, env: int) -> Any:
     return await ctx.client.get_json(
         SCHEDULE, path_params={"containerName": ref.name}, params={"env": env}
@@ -82,9 +164,16 @@ class GetScheduledActionsInput(EnvScoped):
     container: str = Field(min_length=1, max_length=255, description=REF_DESCRIPTION)
 
 
-async def get_scheduled_actions(ctx: ToolContext, args: GetScheduledActionsInput, env: int) -> Any:
-    ref = await resolve_container(ctx.client, env, args.container)
-    return {"container": _container(ref), "schedule": await _schedule(ctx, ref, env)}
+async def get_scheduled_actions(
+    ctx: ToolContext, args: GetScheduledActionsInput, env: int
+) -> Envelope:
+    items = await _containers(ctx, env)
+    ref = container_from(items, args.container)
+    reason = await _elsewhere(ctx, env, items, ref)
+    data = {"container": _container(ref), "schedule": await _schedule(ctx, ref, env)}
+    if reason is None:
+        return ok(data)
+    return ok(data, warnings=[f"{reason}; another environment's schedule may apply to it"])
 
 
 register(
@@ -102,7 +191,7 @@ register(
         data_schema=SCHEDULE_DATA,
     ),
     Tier.READ,
-    (ENVIRONMENTS, LIST, ("GET", SCHEDULE)),
+    (ENVIRONMENTS, LIST, stackguard.LIST, ("GET", SCHEDULE)),
 )
 
 
@@ -145,7 +234,11 @@ def _time(schedule: Any, key: str) -> str | None:
 async def set_scheduled_actions(
     ctx: ToolContext, args: SetScheduledActionsInput, env: int
 ) -> Envelope:
-    ref = await resolve_container(ctx.client, env, args.container)
+    items = await _containers(ctx, env)
+    ref = container_from(items, args.container)
+    reason = await _elsewhere(ctx, env, items, ref)
+    if reason is not None:
+        raise fail("guardrail_blocked", f"{reason}. Nothing was done.")
     current = await _schedule(ctx, ref, env)
     if args.stop is not None:
         _refuse_stop(ref, current)
@@ -203,5 +296,5 @@ register(
         data_schema=SCHEDULE_DATA,
     ),
     Tier.OPERATOR,
-    (ENVIRONMENTS, LIST, ("GET", SCHEDULE), ("PUT", SCHEDULE)),
+    (ENVIRONMENTS, LIST, stackguard.LIST, ("GET", SCHEDULE), ("PUT", SCHEDULE)),
 )
