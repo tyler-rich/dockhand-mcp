@@ -212,11 +212,12 @@ async def test_update_containers_keeps_batch_warnings(
     results = env.data["result"]["results"]
     assert results[0]["warnings"] == answer["results"][0]["warnings"]
     assert "warnings" not in results[1]
-    # The outcome is still judged on `success` alone (an open question, not changed here).
+    # A `warning` is DockHand's release-age advisory for a pull that goes ahead (#20).
     assert {i["name"]: i["outcome"] for i in env.data["items"]} == {
         "web": "succeeded",
         "db": "succeeded",
     }
+    assert env.data["items"][0]["warnings"] == answer["results"][0]["warnings"]
 
 
 async def test_update_containers_redacts_batch_warning_messages(
