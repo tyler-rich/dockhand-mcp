@@ -1463,3 +1463,34 @@ No server code changed in this PR.
 **Tests:** failing commit `acc5992` (the new tests, before the script and the variable existed).
 
 **Alternatives rejected:** a `setup-uv` `version:` pin (nothing to pin; it would only add a pin to watch); a Dependabot-only approach for the Dockerfile stage (it does not see `uv_build` or the build constraints); an `.env`-style exemption for the variable in `clean_env` (it would leak into the config tests).
+
+### 2026-10-30 — Fix #20: update_containers reports skipped and unverified containers (branch fix/issue-20-update-skips)
+**Decision:** `dockhand_update_containers` reports a container as `succeeded` only when DockHand says `success: true` and nothing in its result says otherwise. The call is `ok: true` only when every requested container `succeeded`; any other outcome is `operation_failed` (existing code), with the counts in the message, e.g. "1 of 2 containers were not confirmed updated: 1 skipped; see data.items". `data.items` and `data.summary` are still returned.
+
+**Status classification and its source.** The spec (1.0.55) types `warnings: [{status, message}]` with no enumeration. DockHand's public source (github.com/Finsys/dockhand, tag v1.0.55; read only, nothing copied; BUSL) shows:
+- `src/routes/api/containers/batch-update/+server.ts` collects warnings from the image pull's progress through `src/lib/utils/pull-warning.ts`, whose type allows only `status: 'warning'`.
+- The only producer is `pullImage` in `src/lib/server/docker.ts`. The batch-update route calls it without enforcing the minimum release age, so the warning is an advisory (`src/lib/server/minimum-release-age-core.ts`: the cooldown remains, or could not be determined, "pulling it anyway"). The pull and the recreate go ahead.
+- Nothing in that route skips an update for release age or a digest pin, as the issue supposed. Its one skip is the `dockhand.update=false` label check, reported as `success: true` with `error: "Skipped - dockhand.update=false label"`. DockHand's check is broader than this server's guardrail (it parses more boolean spellings and honours `wud.watch` labels), so this skip is reachable through the tool, and it used to be reported as `succeeded`.
+
+Classification (maintainer decision on these findings):
+- `warning` → informational: the outcome stays `succeeded`; the warning is kept in the item and copied to the envelope's `warnings` as `<name>: <message>`.
+- `success: true` with an `error` starting `Skipped` → `skipped`.
+- `success: true` with any other error, any other warning status, or an unreadable warning (not a list, not an object, missing or non-text status or message) → `unverified`. A skip outranks an unverified warning.
+- `success: false` → `failed`; no result for a container → `unknown`.
+- **`unknown` now fails the call** (maintainer decision): this reverses #15's "an answer with no failure indicator stays `ok: true`". Never assume success: a container the answer does not name was not shown to be updated. `test_an_answer_with_no_verdict_stays_ok` became `test_an_answer_naming_no_container_is_operation_failed`. The maintainer made this conditional on a normal live update resolving to `succeeded`, not `unknown`; it did (see Live).
+
+**Output:** each item may carry `warnings` (status and message through the output redactor, each capped at 512 characters, like the per-item `message`), and a `message` for any outcome other than `succeeded`. `data.summary` is `{total, succeeded, failed, skipped, unverified, unknown}` (`unknown` added beside the two counts the prompt named, so the counts add up to `total`). The message keeps #15's failure sentences and adds the "not confirmed updated" breakdown only when a skipped, unverified or unknown container is present, so a failed-only answer reads as before. The tool now declares a `data_schema` (outcome enum, item and summary shape; no top-level `required`, since a detached call still running answers `{op_id, progress}`), which changes its `outputSchema`; with the new description, that is the one change in the operator catalogue snapshot. TOOLS.md's row and ARCHITECTURE §6's `operation_failed` list say so. No error code was added. `client/batch.py`'s `interpret_batch` (the batch tool) is not changed: its behaviour is proven by its existing tests.
+
+**Tests:** failing commit `8665a0f` (19 failed there: the new skip, unverified (five unreadable shapes), informational, mixed, redaction, cap, schema and description tests; the two #15 tests whose summary assertion gained the new counts; the reversed unknown test; and the 1.0.55 fixture test, now asserting the warning reaches `items`). `tests/fixtures/dockhand/containers/batch-update-1.0.55.json` used an invented status `skipped`; it now uses `warning` with an advisory in the source's wording (still invented, and it says so). After the live run, a regression guard for `warnings: []` was added (it passes on both commits).
+
+**Live** (DockHand 1.0.55, test environment, an `mcp-smoke-` stack the session created, structure only): one update of its container gave `ok: true`, operation `detached`/`completed`, no envelope `warnings`; `data` keys `containers`, `items`, `result`, `summary`; the item `{id, name, outcome: "succeeded"}`; summary 1 succeeded, every other count 0. DockHand's result item carried `containerId`, `containerName`, `success` and **`warnings: []`** (an empty list on an ordinary update). No skip, unverified or informational path was provoked live: that would mean changing the minimum release age or labelling a container, so those paths are covered by invented fixtures. `read.json` 54/54 (default and `--mode legacy`), `operator.json` 14/14, `destructive.json` 10/10 (admin, `CONFIRM_MODE=param`); everything cleaned up, no `mcp-smoke-` stack or container left in either environment; no prune run.
+
+**Versions:** `uv lock --upgrade` changed nothing (52 packages): `mcp` 2.3.0, `httpx` 0.28.1, `pydantic` 2.14.2, `pydantic-settings` 2.16.2, `pyyaml` 6.0.3; dev `ruff` 0.17.3, `mypy` 2.4.1, `pytest` 9.2.0, `pytest-asyncio` 1.4.1, `respx` 0.23.1. `scripts/deps-current.py` passes. python.org's newest stable is 3.15.2: no Python bump. No dependency added.
+
+**Alternatives rejected:**
+- Classifying warning statuses the source never sends (e.g. a `skipped` status): a guess.
+- Treating `warning` as `unverified`: every release-age advisory would fail an update that happened.
+- Matching the skip by the full label text: the `Skipped` prefix is what the route uses for a skip, and any other text on a success is `unverified` anyway.
+- Keeping `unknown` as `ok: true` (#15): the maintainer chose fail-safe.
+
+**Deferred / follow-ups:** the guardrail's label check is narrower than DockHand's (boolean spellings, `wud.watch`); a container DockHand skips for that reason is now reported `skipped`, not refused up front. Aligning the guardrail is its own change.

@@ -261,6 +261,15 @@ async def test_a_release_age_advisory_is_informational(dockhand: respx.MockRoute
     assert envelope.data["summary"] == summary(succeeded=2)
 
 
+async def test_an_empty_warning_list_is_a_plain_success(dockhand: respx.MockRouter) -> None:
+    """Live DockHand 1.0.55 sends `warnings: []` on an ordinary successful update."""
+    envelope = await run(dockhand, with_web(warnings=[]))
+    assert envelope.ok is True, envelope.error
+    assert outcomes(envelope) == {"web": "succeeded", "db": "succeeded"}
+    assert "warnings" not in item(envelope, "web")
+    assert envelope.warnings is None
+
+
 async def test_a_skip_outranks_an_unknown_warning(dockhand: respx.MockRouter) -> None:
     body = with_web(error=SKIPPED, warnings=[{"status": "deferred", "message": "later"}])
     envelope = await run(dockhand, body)
