@@ -18,9 +18,9 @@ permissions:
   contents: read
 
 env:
-  OSV_SCANNER_VERSION: v2.6.0
+  OSV_SCANNER_VERSION: v2.7.0
   # sha256 of osv-scanner_linux_amd64 from the release above (its osv-scanner_SHA256SUMS).
-  OSV_SCANNER_SHA256: ca69b3d3cd08f889a49dc0a383122f71cc528b83803671df5fd874d97485b108
+  OSV_SCANNER_SHA256: 160c6253e2922e9e0a6a9771c5c4c40a4b3c6090b34a3cdd5e80c96cc2e4218b
   SEMGREP_VERSION: 1.183.0
   # Semgrep does not run on CPython 3.15 yet (semgrep-core crashes), so it runs on 3.14. Same
   # rules, files and --error. Drop --python once a Semgrep release runs on 3.15 (CONTRIBUTING).
@@ -105,6 +105,8 @@ jobs:
 
       - name: deps-current (D-013)
         if: steps.changes.outputs.code == 'true'
+        env:
+          GITHUB_TOKEN: ${{ github.token }} # GitHub's latest-release API, past the anonymous rate limit
         run: |
           fail=0
           cp uv.lock "$RUNNER_TEMP/uv.lock.committed"
@@ -138,7 +140,8 @@ jobs:
             fail=1
           fi
 
-          # Hand-maintained pins (uv stage, uv_build, build constraints, Semgrep): scripts/deps-current.py.
+          # Hand-maintained pins (uv stage, uv_build, build constraints, Semgrep, and the OSV-Scanner,
+          # cosign, syft and gitleaks versions in the workflows): scripts/deps-current.py.
           python3 scripts/deps-current.py || fail=1
           exit $fail
 

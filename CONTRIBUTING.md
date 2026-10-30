@@ -69,8 +69,9 @@ tool catalogue, update the snapshots under `tests/fixtures/` in the same PR.
 ### Hand-maintained pins
 
 `uv lock --upgrade` doesn't see these, so `ci`'s deps-current step runs `scripts/deps-current.py`
-(PyPI's newest stable release; an unreachable index skips the check with a notice). It fails when
-any of the following is behind; bump them by hand whenever you refresh dependencies.
+(PyPI's newest stable release, or the newest GitHub release for the workflow tools; an unreachable
+index skips the check with a notice). It fails when any of the following is behind; bump them by
+hand whenever you refresh dependencies.
 
 - The `uv` stage tag in the `Dockerfile` (its digest is checked by Dependabot, which also bumps it).
 - `uv_build` in `[build-system]`: the lower bound is the newest release and the upper bound is the
@@ -80,6 +81,11 @@ any of the following is behind; bump them by hand whenever you refresh dependenc
   `uv.lock` doesn't lock (or hash) build dependencies. When PyYAML ships cp315 wheels, remove
   these pins and `PYYAML_FORCE_LIBYAML` from the `Dockerfile`.
 - `SEMGREP_VERSION` in `.github/workflows/ci.yml`.
+- The tools the workflows download, each at its project's newest GitHub release:
+  `OSV_SCANNER_VERSION` in `ci.yml`, `release.yml` and `image-scan.yml` (with `OSV_SCANNER_SHA256`,
+  the `osv-scanner_linux_amd64` line of that release's `osv-scanner_SHA256SUMS`);
+  `COSIGN_VERSION` and `SYFT_VERSION` in `release.yml`; `GITLEAKS_VERSION` in `ci.yml`. Read each
+  release's notes for changes to how the workflows call it.
 
 Watched only by a notice: `SEMGREP_PYTHON` in the same file. Semgrep runs on CPython 3.14 because
 no Semgrep release runs on 3.15 yet (its engine crashes there). The check prints a notice when the
