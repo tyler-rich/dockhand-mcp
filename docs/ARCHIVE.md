@@ -1611,3 +1611,28 @@ Classification (maintainer decision on these findings):
 **Toggle wording:** `dockhand_toggle_schedule`'s description already said "a container's start and stop times switch together". It is now pinned by a test. TOOLS.md's row says that toggling `container_stop` also disables the start, that one time alone cannot be disabled, and that to keep only one time you set the schedule again without the other.
 
 **Tests:** `tests/test_self_identification.py`; failing commit `812c946` (14 failed). One test passes at both commits: stops are still allowed when unidentified. `conftest.py` now also makes `identify` deterministic (not in a container).
+
+### 2026-10-30 — Release-tool pins and their deps-current coverage (branch chore/release-tool-pins)
+**Decision:** The tools the workflows download move to their newest stable releases, and `scripts/deps-current.py` now fails when any of them falls behind.
+- `OSV_SCANNER_VERSION` v2.6.0 → **v2.7.0** in `ci.yml`, `release.yml` and `image-scan.yml`. `OSV_SCANNER_SHA256` is the `osv-scanner_linux_amd64` line of v2.7.0's own `osv-scanner_SHA256SUMS`, fetched for this change; the downloaded binary hashes to it.
+- `COSIGN_VERSION` v3.1.3 → **v3.1.4** and `SYFT_VERSION` v1.52.0 → **v1.55.0** in `release.yml`. They are installed by `sigstore/cosign-installer` and `anchore/sbom-action`, which take a version only; both actions are already at their newest releases.
+- `GITLEAKS_VERSION` 8.30.1 is already the newest release.
+
+**Why:** the v0.3.0 release preparation found these three behind while `deps-current` passed: it watched only the PyPI-published pins. CONTRIBUTING's "Hand-maintained pins" list now names the workflow tools too.
+
+**Release notes read for how the workflows call each tool** (nothing affects us):
+- *OSV-Scanner v2.7.0:* JSON output gains `purl` where available (additive); `--experimental-` flags gain `--x-` aliases (we use none); exit codes unchanged. `scripts/osv-image-gate.py` reads the new output unchanged (below).
+- *cosign v3.1.4:* `sign` and `attest` now refuse several images, or `--recursive`, only together with `--bundle` (a local bundle file), which the release workflow does not pass. `--use-signing-config` is deprecated (unused). `verify` flags are unchanged.
+- *syft v1.54.0–v1.55.0 (there is no v1.53):* cataloger additions and fixes; no change to CycloneDX JSON output or to the options `sbom-action` passes.
+
+**deps-current:** a second table, `RELEASE_PINS`, maps each (workflow file, variable) to its GitHub repository; each pin must equal the tag of that repository's `releases/latest` (never a draft or a pre-release), compared with a leading `v` ignored (gitleaks is pinned without one). OSV-Scanner is checked in each of its three workflows, so one stale copy is reported by file. A pin that cannot be found is a problem; an unreachable API (including a rate-limit refusal) skips that repository with a notice, like PyPI. `GITHUB_TOKEN`, when set, is sent as a bearer token; `ci`'s deps-current step now passes `github.token` for that. Before the bumps, the script reported exactly the five stale pins (OSV-Scanner in three files, cosign, syft).
+
+**OSV image gate with v2.7.0** (its official image, by digest), on the per-platform archives of the v0.3.0 release image, judged by `scripts/osv-image-gate.py`: linux/amd64 and linux/arm64 both **0 blocking, 69 reported**, the same findings as v2.6.0.
+
+**Tests:** failing commit `826d8ad` (28 failed there: every test in `tests/test_deps_current.py`, since `check` gains the workflows mapping and the GitHub fetcher). The GitHub answers are invented fixtures and say so.
+
+**Versions:** `uv lock --upgrade` moved the dev dependency `types-pyyaml` 6.0.12.20260906 → 6.0.12.20261030 (released today); nothing else changed (52 packages). CPython 3.15.2 is the newest stable (3.16 is a pre-release). No dependency added; the script uses the standard library only.
+
+**Alternatives rejected:** Dependabot for these pins (it does not see version strings in `env:`); checking the OSV checksum against the release's checksums file in `deps-current` (the workflow's `sha256sum --check` already fails on a mismatch); a separate script for the GitHub pins (one D-013 gate is simpler to keep honest).
+
+**Deferred / follow-ups:** none.
