@@ -1664,3 +1664,29 @@ OAuth resource-server mode is not part of this release. No server code changed i
 **Alternatives rejected:** a patch release (new tools and a behaviour change call for a minor bump).
 
 **Deferred / follow-ups:** none.
+
+### 2026-10-31 — DockHand API 1.0.56 (branch chore/dockhand-api-1.0.56)
+**Decision:** DockHand API 1.0.56 is the reference spec (`docs/api/dockhand-openapi-1.0.56.json`, git-ignored). The map and `env_required.py` are regenerated from it, the two new operations are classified, and **no tool is added**. The supported version (D-012, README, DOCKHAND-SETUP, `docs/api/README.md`, CLAUDE.md, the bug-report placeholder) is now 1.0.56.
+
+**info.version discrepancy:** the 1.0.56 document, as DockHand's UI names the release, still reports `info.version` 1.0.55. The document is not edited. `scripts/gen-endpoint-map.py` now names the version from the spec's file name (`dockhand-openapi-<version>.json`) and, when that differs from `info.version`, says so: the map's header reads `v1.0.56; spec info.version reports 1.0.55` and `env_required.py`'s docstring says the same (`spec_version()`; a file name that does not match the pattern falls back to `info.version`). `test_the_map_header_states_the_version_honestly` pins it. Nothing else keyed on `info.version`.
+
+**Spec diff (1.0.55 → 1.0.56), done in this session from the two documents:** 413 → 415 operations, 285 → 286 paths; 2 added, 0 removed, 3 changed. `components` and the global `security` are identical; the top level differs only in `paths` and `tags` (the new `exposure-status` tag).
+- *Added:* `GET /api/exposure-status` (no parameters, public; 200 `{warn, dismissed}`: `warn` is true only when auth is off, the bind host is not loopback and the Docker socket is mounted read-write) and `POST /api/exposure-status` (no parameters, public; dismisses that warning; 200 `{dismissed: true}`, 403 once authentication is enabled).
+- *Changed (3):* `POST /api/stacks`, `PUT /api/stacks/{name}/compose` and `POST /api/stacks/{name}/deploy` each gain the optional boolean request fields `pullBase` and `respectPullPolicy`. Nothing else in them differs (parameters, required fields, responses, security all unchanged). No other operation changed, so no tool's contract moved.
+
+**Tiers for the new operations** (`exposure-status` rule in the generator; `tests/test_api_1_0_56.py` pins both). No existing operation changed tier.
+- `GET /api/exposure-status` → **read**. It changes nothing and returns two booleans. No tool is registered for it (not asked for; out of scope).
+- `POST /api/exposure-status` → **excluded** (D-007). It dismisses a DockHand security warning, which an AI client must never do. DockHand only accepts it while its auth is off, which is the state the warning is about. No tool, no internal call. Tested unreachable from every profile and undeclarable at every tool tier.
+- Before classification the generator's catch-all labelled both `review`, and the generated-from-spec test failed on it.
+
+**env-required list:** unchanged (43). Neither new operation takes a parameter.
+
+**The no-op request fields:** none of the three stack tools sends `pullBase` or `respectPullPolicy`, so DockHand's defaults apply (`dockhand_deploy_stack` still sends `pull`, `build` and `forceRecreate`). These pass on the old code too, so `test_stack_tools_never_send_the_pull_fields` is a **regression guard**, not a failing test: it runs each of `dockhand_create_stack`, `dockhand_update_stack_compose` and `dockhand_deploy_stack` and asserts that no JSON body they send anywhere contains either field. Exposing them is a separate change.
+
+**Live** (read-only profile unless stated; structure only). `GET /api/exposure-status` through the project's own client returned a JSON object with exactly the keys `warn` and `dismissed`, both booleans, as the spec describes. `read.json` 56/56 in the current and legacy protocol modes; `operator.json` 20/20 and `destructive.json` (admin, `CONFIRM_MODE=param`) 10/10 on the test environment, with cleanup afterwards and no smoke-prefixed stack or container left; `dockhand-mcp check` reported no problems. Prune was not run.
+
+**Tests:** failing commit `c5f2e0e` (13 failed there with the 1.0.56 spec present: the classification test, the exposure-status unreachability cases (2 operations × 3 profiles, plus the 4 tier cases), the map-header test and the generated-from-spec map test; the stack-field tests pass there and are regression guards). **Alternatives rejected:** editing the spec's `info.version`; mapping the new tag to the `review` default; a tool for the exposure status.
+
+**Deferred / follow-ups:** a read tool for the exposure status, and exposing `pullBase`/`respectPullPolicy`, if wanted; each is its own change.
+
+**Versions:** `uv lock --upgrade` changed one package: `python-multipart` 0.0.32 → 0.0.33 (own commit `chore(deps): refresh to latest`). Everything else unchanged, CPython 3.15.2 is still the newest stable minor, and `scripts/deps-current.py` reports nothing stale. No pins, runtime dependency or CI changes.
