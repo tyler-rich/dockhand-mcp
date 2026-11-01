@@ -84,7 +84,8 @@ destructive tools. If the container keeps restarting, its last log line says why
 [troubleshooting](docs/DOCKHAND-SETUP.md#startup-and-runtime-failures). Other ways to run it:
 [`deploy/docker-run.md`](deploy/docker-run.md) (plain Docker),
 [`deploy/dockhand-stack.yml`](deploy/dockhand-stack.yml) (DockHand or Portainer stack editors),
-stdio for Claude Desktop ([CLIENTS §3](docs/CLIENTS.md#3-claude-desktop-chat)).
+stdio for Claude Desktop ([CLIENTS §3](docs/CLIENTS.md#3-claude-desktop-chat)); connection problems:
+[client troubleshooting](docs/CLIENTS.md#troubleshooting).
 
 Verify the image signature before you deploy it; each release's notes carry the exact
 `cosign verify` line.
