@@ -1727,3 +1727,16 @@ OAuth resource-server mode is not part of this release. No server code changed i
 **Deferred:** once dependabot-core#16524 ships, confirm Dependabot's uv jobs succeed and decide whether to keep the workflow (deps-current's notice prompts it).
 
 **Versions:** `uv lock --upgrade` changed nothing; uv 0.13.6; CPython 3.15.2 is still the newest stable minor; `deps-current.py` reports nothing stale. No runtime dependency added.
+
+### 2026-10-31 — Claude Desktop connection troubleshooting (branch docs/client-troubleshooting)
+**Decision:** `docs/CLIENTS.md` gains a *Troubleshooting* section and an `mcp-remote` subsection in §3; the README's client setup links to it. Docs only: no code, config, rate-limit or OAuth change.
+
+**Why:** On Windows, Claude Desktop often does not receive a user environment variable (stale environment from a background process or the updater). `mcp-remote` then logs `Environment variable 'DOCKHAND_MCP_AUTH' not found`, sends the literal `${DOCKHAND_MCP_AUTH}`, gets 401, falls back to OAuth discovery and reports `Dynamic Client Registration rejected (HTTP 404)`, which is a symptom (the server has no OAuth). Several `mcp-remote` processes retry at once, so the auth-failure block (10 failures / 5 min → 429 `rate_limited` for 5 min) trips within seconds.
+
+**Documented:** symptom → cause → fix table; the recovery sequence (fix token, fully quit Claude Desktop, end leftover `node` processes, wait 5 minutes or restart the container); the healthy log (`Using custom headers: Authorization`); the `env` block for Windows and macOS, with the trade-off that the token then lives in `claude_desktop_config.json` and must be redacted before sharing. Placeholders only (`<HOST>`, `<PORT>`, `<TOKEN>`, `example.test`).
+
+**Alternatives rejected:** changing the rate limiter to ignore repeated identical failures (out of scope; a behaviour change); documenting a user environment variable as the primary fix (unreliable on Windows).
+
+**Deferred:** the `mcp-remote` log strings come from user reports and were not re-checked against the `mcp-remote` source. Elicitation behaviour through `mcp-remote` is unverified.
+
+**Versions:** docs-only; dependencies untouched.
