@@ -1740,3 +1740,27 @@ OAuth resource-server mode is not part of this release. No server code changed i
 **Deferred:** the `mcp-remote` log strings come from user reports and were not re-checked against the `mcp-remote` source. Elicitation behaviour through `mcp-remote` is unverified.
 
 **Versions:** docs-only; dependencies untouched.
+
+### 2026-10-31 — Release v0.3.1 (branch chore/release-0.3.1)
+**Decision:** Version 0.3.1 (`pyproject.toml`, `__version__`, `uv.lock`'s own entry). It ships the changes recorded since the v0.3.0 entry. **No tool or behaviour changes**, so this is a patch release.
+- **Supported DockHand: 1.0.56** (two new operations classified, no new tools; the spec's `info.version` still reports 1.0.55).
+- **Dependency bump:** `python-multipart` 0.0.32 → 0.0.33.
+- **Dependency graph fix:** a `dependency-submission` workflow submits `uv.lock` to GitHub's dependency graph on every push to `main`, so the graph and Dependabot alerts reflect the locked versions while Dependabot does not support Python 3.15. This release's merge to `main` is its first run.
+- **Docs:** Claude Desktop (`mcp-remote`) connection troubleshooting in `docs/CLIENTS.md`.
+- **Dependabot PRs merged without their own entry:** none since v0.3.0.
+
+OAuth resource-server mode is not part of this release. No server code changed in this PR.
+
+**Release mechanics, unchanged from v0.3.0:** `release.yml` on the `v0.3.1` tag. `v0.3.0` is the previous tag, so `release-notes.py` takes the entries whose headings are in the ARCHIVE at `v0.3.1` and not at `v0.3.0`: the DockHand API 1.0.56 entry through this one. `CHANGELOG.md` gains a 0.3.1 section from `scripts/release-notes.py changelog --previous-archive <ARCHIVE at v0.3.0>`, with one hand edit for readability: a summary after the heading. The README's status line (v0.3, DockHand 1.0.56) is still correct and is unchanged.
+
+**Pre-release checks (local, on this branch):**
+- The full suite passes (2097 passed, 2 skipped).
+- Image built per platform with the release's build arguments: labels `version=0.3.1` and `source=https://github.com/tyler-rich/dockhand-mcp`, CPython 3.15.2. Under `ci`'s hardened-run flags it is `healthy`, `/healthz` answers `200 {"status":"ok"}`, and `/licenses/LICENSE` and `/licenses/NOTICE` match the repository's. Inside it, `dockhand-mcp check` with the `operator` profile does not report the own-container problem.
+- OSV-Scanner v2.7.0 (its official image, by digest) on per-platform docker archives, judged by `scripts/osv-image-gate.py`: **linux/amd64 and linux/arm64 both pass, 0 blocking, 70 reported** (v0.3.0: 69). The published v0.3.0 image, scanned the same day, reports the same 70, so the extra finding is a newly published Debian advisory, not a change in the image. No exception added; `osv-scanner.toml` still holds `IgnoredVulns = []`.
+- Live, read-only profile, against the built container with both token files mounted read-only and named by the `*_FILE` variables: `read.json` 56/56 in both `auto` and `legacy`. `dockhand-mcp check` with the `operator` profile in that container reports no problems.
+
+**Versions:** `uv lock --upgrade` changed nothing (52 packages; only the project's own entry moves to 0.3.1). CPython 3.15.2 is still the newest stable minor (3.16 is a pre-release), so there is no Python bump. `scripts/deps-current.py` reports nothing stale. Release tooling unchanged: OSV-Scanner v2.7.0, cosign v3.1.4, syft v1.55.0, gitleaks 8.30.1. No dependency was added.
+
+**Alternatives rejected:** a minor release (nothing user-visible in the tools or their behaviour changed).
+
+**Deferred / follow-ups:** none.
