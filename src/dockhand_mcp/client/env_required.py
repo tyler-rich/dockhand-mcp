@@ -1,7 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Operations whose environment query parameter DockHand requires (API v1.0.55).
+"""Operations whose environment query parameter DockHand requires.
 
-Generated from the `/api/docs` OpenAPI document by `scripts/gen-endpoint-map.py --env-required`;
+Generated from the `/api/docs` OpenAPI document (API v1.0.56; spec info.version reports 1.0.55) by
+`scripts/gen-endpoint-map.py --env-required`;
 do not edit. `client/dockhand.py` refuses a request to any of these, before sending it, when the
 parameter is missing or empty (#5).
 """

@@ -4,11 +4,11 @@
 
 The OpenAPI document (GET /api/docs) is NOT committed to this repository (docs/api/*.json is
 git-ignored); the maintainer attaches it to the Claude Code sessions that need it, and it is saved
-locally as docs/api/dockhand-openapi-1.0.55.json for the duration of the work.
+locally as docs/api/dockhand-openapi-1.0.56.json for the duration of the work.
 
 Usage:
-    python3 scripts/gen-endpoint-map.py docs/api/dockhand-openapi-1.0.55.json > docs/api/ENDPOINT-MAP.md
-    python3 scripts/gen-endpoint-map.py --env-required docs/api/dockhand-openapi-1.0.55.json \
+    python3 scripts/gen-endpoint-map.py docs/api/dockhand-openapi-1.0.56.json > docs/api/ENDPOINT-MAP.md
+    python3 scripts/gen-endpoint-map.py --env-required docs/api/dockhand-openapi-1.0.56.json \
         > src/dockhand_mcp/client/env_required.py
 
 `--env-required` writes the operations whose environment query parameter the spec marks required,
@@ -23,6 +23,7 @@ tier() rules must be recorded in docs/ARCHIVE.md §14 and reflected in docs/TOOL
 """
 
 import json
+import os
 import re
 import sys
 from collections import Counter, defaultdict
@@ -111,6 +112,11 @@ def tier(tag: str, m: str, p: str) -> str:
         if m == "get":
             return "read"
         return "admin" if tag == "tags" else "operator"
+    if tag == "exposure-status":
+        # 1.0.56: whether DockHand listens beyond localhost with auth off and a writable socket.
+        # The GET is a public read. The POST dismisses that security warning, which an AI client
+        # must never do (D-007).
+        return "read" if m == "get" else "excluded"
     if tag == "stack-stats":
         return "read"  # 1.0.55: a per-stack stats snapshot
     if tag == "scheduled-actions":
@@ -184,6 +190,19 @@ def tier(tag: str, m: str, p: str) -> str:
 ENV_PARAMS = ("env", "envId")
 
 
+def spec_version(path: str, d: dict) -> str:
+    """The DockHand version the document is for, as named by its file, else its info.version.
+
+    The 1.0.56 document still reports 1.0.55 as its info.version, so the file name (the UI
+    version) wins and the label says when the two differ (ARCHIVE §14, 1.0.56).
+    """
+    reported = d["info"]["version"]
+    named = re.fullmatch(r"dockhand-openapi-(\d+\.\d+\.\d+)\.json", os.path.basename(path))
+    if named is None or named[1] == reported:
+        return reported
+    return f"{named[1]}; spec info.version reports {reported}"
+
+
 def env_required_operations(d: dict) -> dict[tuple[str, str], str]:
     """(METHOD, path template) → the environment query parameter the spec marks required."""
     found = {}
@@ -197,13 +216,14 @@ def env_required_operations(d: dict) -> dict[tuple[str, str], str]:
     return found
 
 
-def env_required_module(d: dict) -> str:
+def env_required_module(d: dict, version: str) -> str:
     rows = sorted(env_required_operations(d).items(), key=lambda item: (item[0][1], item[0][0]))
     out = [
         "# SPDX-License-Identifier: Apache-2.0",
-        f'"""Operations whose environment query parameter DockHand requires (API v{d["info"]["version"]}).',
+        '"""Operations whose environment query parameter DockHand requires.',
         "",
-        "Generated from the `/api/docs` OpenAPI document by `scripts/gen-endpoint-map.py --env-required`;",
+        f"Generated from the `/api/docs` OpenAPI document (API v{version}) by",
+        "`scripts/gen-endpoint-map.py --env-required`;",
         "do not edit. `client/dockhand.py` refuses a request to any of these, before sending it, when the",
         "parameter is missing or empty (#5).",
         '"""',
@@ -224,7 +244,7 @@ def env_required_module(d: dict) -> str:
 def main(path: str, env_required: bool = False) -> None:
     d = json.load(open(path))
     if env_required:
-        sys.stdout.write(env_required_module(d))
+        sys.stdout.write(env_required_module(d, spec_version(path, d)))
         return
     rows = []
     for p, ops in d["paths"].items():
@@ -267,7 +287,7 @@ def main(path: str, env_required: bool = False) -> None:
 
     c = Counter(r[3] for r in rows)
     out = []
-    out.append(f"# DockHand API endpoint map (v{d['info']['version']})\n")
+    out.append(f"# DockHand API endpoint map (v{spec_version(path, d)})\n")
     out.append(
         "Generated from the `/api/docs` OpenAPI 3.0.3 document by `scripts/gen-endpoint-map.py` "
         "(the JSON itself is not committed; see `docs/api/README.md`). "
@@ -313,4 +333,4 @@ if __name__ == "__main__":
     args = sys.argv[1:]
     as_module = "--env-required" in args
     args = [a for a in args if a != "--env-required"]
-    main(args[0] if args else "docs/api/dockhand-openapi-1.0.55.json", env_required=as_module)
+    main(args[0] if args else "docs/api/dockhand-openapi-1.0.56.json", env_required=as_module)
