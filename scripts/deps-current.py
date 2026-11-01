@@ -15,7 +15,8 @@ lockfile and CPython checks:
   each the tag of its project's newest GitHub release.
 
 It also prints a notice, never a failure, when the newest Semgrep declares support for the
-project's Python while ci.yml still overrides it with SEMGREP_PYTHON.
+project's Python while ci.yml still overrides it with SEMGREP_PYTHON, and when
+dependabot-core#16524 (Dependabot's Python 3.15 support) is closed.
 
 Newest stable releases come from PyPI's JSON API (`info.version` is never a pre-release) and
 GitHub's `releases/latest` (never a draft or a pre-release; `GITHUB_TOKEN`, when set, is sent to
@@ -38,6 +39,7 @@ from pathlib import Path
 Version = tuple[int, ...]
 Fetch = Callable[[str], dict[str, object]]
 FetchRelease = Callable[[str], str]
+FetchIssueState = Callable[[str, int], str]
 
 UV_STAGE = re.compile(
     r"^FROM ghcr\.io/astral-sh/uv:(?P<v>[0-9][^@\s]*)(?:@\S+)?\s+AS\s+uv\s*$", re.M
@@ -58,6 +60,10 @@ RELEASE_PINS = {
     ("ci.yml", "GITLEAKS_VERSION"): "gitleaks/gitleaks",
 }
 RELEASE_PIN_FILES = sorted({file for file, _ in RELEASE_PINS})
+
+# Dependabot cannot process `requires-python >=3.15` until this issue closes; until then
+# dependency-submission.yml keeps the dependency graph current.
+DEPENDABOT_PYTHON_ISSUE = ("dependabot/dependabot-core", 16524)
 
 
 @dataclass
@@ -126,6 +132,22 @@ def check_release_pins(
             )
 
 
+def check_dependabot_python(issue_state: FetchIssueState, result: Result) -> None:
+    """A notice once Dependabot's Python 3.15 support issue is closed."""
+    repo, number = DEPENDABOT_PYTHON_ISSUE
+    try:
+        state = issue_state(repo, number)
+    except OSError as err:  # URLError, HTTPError (rate limit) and timeouts are OSErrors
+        result.notices.append(f"{repo}#{number}: skipped, GitHub unreachable ({err})")
+        return
+    if state == "closed":
+        result.notices.append(
+            f"dependabot-core#{number} is closed: Dependabot now supports Python 3.15. Keep or "
+            "remove dependency-submission.yml, and check that Dependabot's uv jobs succeed "
+            "(CONTRIBUTING, Dependency graph)"
+        )
+
+
 def check(
     dockerfile: str,
     pyproject: str,
@@ -189,15 +211,23 @@ def pypi_latest(name: str) -> dict[str, object]:
     return {"version": info["version"], "classifiers": info["classifiers"]}
 
 
-def github_latest(repo: str) -> str:
+def github_get(path: str) -> dict[str, object]:
     request = urllib.request.Request(
-        f"https://api.github.com/repos/{repo}/releases/latest",
-        headers={"Accept": "application/vnd.github+json"},
+        f"https://api.github.com/{path}", headers={"Accept": "application/vnd.github+json"}
     )
     if token := os.environ.get("GITHUB_TOKEN"):
         request.add_header("Authorization", f"Bearer {token}")
     with urllib.request.urlopen(request, timeout=30) as response:  # noqa: S310 (fixed https URL)
-        return str(json.loads(response.read())["tag_name"])
+        answer: dict[str, object] = json.loads(response.read())
+    return answer
+
+
+def github_latest(repo: str) -> str:
+    return str(github_get(f"repos/{repo}/releases/latest")["tag_name"])
+
+
+def github_issue_state(repo: str, number: int) -> str:
+    return str(github_get(f"repos/{repo}/issues/{number}")["state"])
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -214,6 +244,7 @@ def main(argv: list[str] | None = None) -> int:
         pypi_latest,
         github_latest,
     )
+    check_dependabot_python(github_issue_state, result)
     for notice in result.notices:
         print(f"::notice::{notice}")
     for problem in result.problems:

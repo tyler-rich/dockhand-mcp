@@ -92,6 +92,22 @@ no Semgrep release runs on 3.15 yet (its engine crashes there). The check prints
 newest Semgrep declares support for the project's Python; then remove `SEMGREP_PYTHON` and the
 step's `--python`.
 
+### Dependency graph
+
+GitHub's dependency graph, and the Dependabot alerts judged against it, get `uv.lock` from
+`.github/workflows/dependency-submission.yml`, not from Dependabot: Dependabot's uv jobs fail on
+`requires-python >=3.15` (dependabot-core#16524), so Dependabot opens no uv version or security
+PRs either (docs/SECURITY.md, *Dependency vulnerability coverage*). On every push to `main`, and
+on a manual run on `main`, the workflow builds a snapshot with `scripts/dependency-snapshot.py`
+(each locked package as `pkg:pypi/<name>@<version>`, runtime or development scope, direct or
+indirect) and posts it to the dependency submission API for manifest `uv.lock`. `ci` builds the
+same snapshot on every PR without submitting it, and lists it in the job summary. To preview it
+locally: `uv run python scripts/dependency-snapshot.py`.
+
+deps-current prints a notice once dependabot-core#16524 is closed. Then confirm that Dependabot's
+uv jobs succeed (the repository's Actions runs named `uv in /.` and `Graph Update: uv`) and
+decide whether to keep the snapshot workflow (it stays accurate) or remove it.
+
 ### PyYAML on Windows
 
 Until PyYAML ships CPython 3.15 wheels, `uv sync` on Windows builds it from source and fails

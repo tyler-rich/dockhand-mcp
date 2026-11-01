@@ -1,0 +1,40 @@
+# Submits uv.lock to GitHub's dependency graph (plan S-09). Dependabot's own uv graph job fails on
+# `requires-python >=3.15` (dependabot-core#16524), which left the graph, and the Dependabot alerts
+# judged against it, at v0.2.0's lockfile. A user submission outranks the graph job's entry for
+# the same manifest, so this snapshot of manifest `uv.lock` replaces the stale one. Main only;
+# never on pull requests (ci builds the snapshot there without submitting it).
+name: dependency-submission
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: dependency-submission
+  cancel-in-progress: false
+
+jobs:
+  submit:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write # required by POST /repos/{owner}/{repo}/dependency-graph/snapshots
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Build the uv.lock snapshot
+        run: python3 scripts/dependency-snapshot.py --output "$RUNNER_TEMP/snapshot.json"
+
+      - name: Submit it
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          gh api --method POST "repos/${REPOSITORY}/dependency-graph/snapshots" \
+            --input "$RUNNER_TEMP/snapshot.json" --jq '"snapshot \(.id): \(.result) \(.message)"'

@@ -318,3 +318,59 @@ def test_the_repository_pins_are_parseable(dc: ModuleType) -> None:
         ("release.yml", "SYFT_VERSION"),
         ("ci.yml", "GITLEAKS_VERSION"),
     }
+
+
+# Dependabot's Python 3.15 support (dependabot-core#16524): a notice only, never a failure.
+
+
+def _issue(state: str) -> object:
+    def issue_state(repo: str, number: int) -> str:
+        assert (repo, number) == ("dependabot/dependabot-core", 16524)
+        return state
+
+    return issue_state
+
+
+def test_dependabot_python_notice_when_the_issue_is_closed(dc: ModuleType) -> None:
+    result = dc.Result()
+    dc.check_dependabot_python(_issue("closed"), result)
+    assert result.problems == []
+    assert len(result.notices) == 1
+    notice = result.notices[0]
+    assert "dependabot-core#16524" in notice and "3.15" in notice
+    assert "dependency-submission.yml" in notice and "uv jobs" in notice
+
+
+def test_no_dependabot_python_notice_while_the_issue_is_open(dc: ModuleType) -> None:
+    result = dc.Result()
+    dc.check_dependabot_python(_issue("open"), result)
+    assert result.problems == [] and result.notices == []
+
+
+def test_unreachable_github_skips_the_dependabot_python_check(dc: ModuleType) -> None:
+    def offline(_repo: str, _number: int) -> str:
+        raise OSError("network is unreachable")
+
+    result = dc.Result()
+    dc.check_dependabot_python(offline, result)
+    assert result.problems == []
+    assert len(result.notices) == 1 and "skipped" in result.notices[0]
+
+
+def test_github_issue_state_reads_the_issue(
+    dc: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    token = fake_secret("ghs-fake")
+    monkeypatch.setenv("GITHUB_TOKEN", token)
+    seen: list[object] = []
+
+    def urlopen(request: object, timeout: float) -> _Answer:
+        seen.append(request)
+        return _Answer(b'{"number": 16524, "state": "closed"}')
+
+    monkeypatch.setattr(dc.urllib.request, "urlopen", urlopen)
+    assert dc.github_issue_state("dependabot/dependabot-core", 16524) == "closed"
+    request = seen[0]
+    url = "https://api.github.com/repos/dependabot/dependabot-core/issues/16524"
+    assert request.full_url == url  # type: ignore[attr-defined]
+    assert request.get_header("Authorization") == f"Bearer {token}"  # type: ignore[attr-defined]
