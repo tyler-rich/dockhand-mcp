@@ -1690,3 +1690,40 @@ OAuth resource-server mode is not part of this release. No server code changed i
 **Deferred / follow-ups:** a read tool for the exposure status, and exposing `pullBase`/`respectPullPolicy`, if wanted; each is its own change.
 
 **Versions:** `uv lock --upgrade` changed one package: `python-multipart` 0.0.32 → 0.0.33 (own commit `chore(deps): refresh to latest`). Everything else unchanged, CPython 3.15.2 is still the newest stable minor, and `scripts/deps-current.py` reports nothing stale. No pins, runtime dependency or CI changes.
+
+### 2026-10-31 — Dependency graph accuracy for uv.lock (branch fix/dependency-graph-snapshot)
+**Decision:** `uv.lock` reaches GitHub's dependency graph through a submitted snapshot: `.github/workflows/dependency-submission.yml` runs the new `scripts/dependency-snapshot.py` on every push to `main` (and on `workflow_dispatch` on `main`) and posts the result to the dependency submission API for manifest `uv.lock`. `ci` builds the same snapshot on every PR without submitting it and lists it in the job summary. `scripts/deps-current.py` prints a notice, never a failure, once dependabot-core#16524 closes.
+
+**The cause, corrected.** The working hypothesis, that GitHub stopped reading `uv.lock` when its header went from `revision = 3` to `revision = 5` (#21, uv 0.13), was **wrong**. The real cause is that **Dependabot does not support Python 3.15**. Since #21 set `requires-python = ">=3.15"`, every Dependabot uv job, including the dependency-graph job, stops before parsing with `tool_version_not_supported` (`detected-version: ">=3.15"`, `supported-versions: 3.10.* … 3.14.*`). Upstream: dependabot-core#16524 (issue) and #16525 (PR), both open on 2026-10-31. The revision change landed in the same PR, which is why the two looked linked. Dependabot's uv lockfile reader (`uv/lib/dependabot/uv/lockfile_document.rb`) never reads `revision`.
+- *Evidence (the repository's dynamic Actions runs):* `Graph Update: uv in /.` on `main`, run 41026512928 (2026-10-30 08:27 UTC, the v0.3.0 merge), failed with that error. So did the security update for opentelemetry-api on `main` (run 41029908626) and every daily uv version update on `dev` from the first one after #21 (run 40818866649, 2026-10-29 04:38 UTC). Every uv job before #21 succeeded.
+- *The graph's state (`gh api`):* the `uv.lock` manifest is `parseable: true` with 52 dependencies, all at v0.2.0's versions (dockhand-mcp 0.2.0, mcp 2.2.0, opentelemetry-api 1.45.0, certifi 2026.7.22). The SBOM matches. The workflow manifests are current (setup-uv v10.3.2 from #17), so pushes to `main` are processed; only the uv entries are frozen.
+- *Alerts:* **#1** (opentelemetry-api ≤ 1.45.0; `main` has 1.45.2 since v0.3.0) and **#2** (certifi < 2026.10.18, opened 2026-10-30; `main` has 2026.10.23) are both stale for this reason: they are judged against the frozen v0.2.0 versions.
+
+**Why a snapshot supersedes the stale entry:** GitHub's dependency submission REST reference states that the graph shows one instance of each manifest file, by precedence: user submissions first, then Dependabot graph jobs (Go and Python only), then automatic submission, then static analysis. The frozen `uv.lock` entry comes from the Dependabot graph job, so a user submission for the same manifest path outranks it. Only the latest snapshot per `job.correlator` + `detector.name` counts, so each push to `main` replaces the previous one (correlator `dependency-submission uv.lock`). GitHub's docs say submitted dependencies receive Dependabot alerts. No doc says outright that an existing alert closes when the graph's version moves past the vulnerable range; that is the maintainer's post-merge check.
+
+**The snapshot** (`scripts/dependency-snapshot.py`, standard library only: `tomllib`, `json`, `argparse`):
+- Every locked package except the project itself becomes `pkg:pypi/<normalised name>@<version>`. The project's name and version and the lock revision go in the manifest's `metadata`.
+- `relationship` is `direct` for the project's dependencies, optional dependencies and dependency groups, and `indirect` otherwise.
+- `scope` is `runtime` when the package is reachable from the project's dependencies or optional dependencies, and `development` when reachable only from a dependency group. A package nothing reaches is reported as runtime, so no alert is lost.
+- Environment markers are ignored (anything some platform installs is reported). An extra a parent asks for brings that package's optional dependencies. A name locked at two versions is keyed `name@version`.
+- An unknown lockfile `version` (format, not revision), a missing or duplicated project, or a dangling reference fails with `::error`.
+- On this branch's `uv.lock`: dockhand-mcp 0.3.0, 51 packages (36 runtime, 15 development); opentelemetry-api 1.45.2 runtime/indirect, mcp 2.3.0 runtime/direct, certifi 2026.10.23 runtime/indirect.
+
+**Permissions:** the workflow's top level is `permissions: {}`; its one job has `contents: write` (required by `POST /repos/{owner}/{repo}/dependency-graph/snapshots`) and `if: github.ref == 'refs/heads/main'`. It uses `GITHUB_TOKEN` through `gh api` and no other secret, checks out with `persist-credentials: false`, and never runs on `pull_request`. Its only action is `actions/checkout` v7.0.1 (`3d3c42e…`, the newest release, already covered by Dependabot's github-actions updates), so no hand-maintained pin is added. Tests pin the triggers, the permissions, SHA pinning and the ci dry run.
+
+**Coverage while Dependabot can't process the project** (docs/SECURITY.md, *Dependency vulnerability coverage*; CONTRIBUTING, *Dependency graph*): the snapshot (graph and alerts), OSV-Scanner on `uv.lock` in every PR, the weekly image scan, and `deps-current`. **Dependabot uv version and security PRs will not open until upstream support lands.**
+
+**How to verify after merge:** after the next merge to `main` (or a `workflow_dispatch` run on `main`), the `dependency-submission` run logs `snapshot <id>: SUCCESS …`. The dependency graph's SBOM (`gh api repos/{owner}/{repo}/dependency-graph/sbom`) should then list `main`'s versions (opentelemetry-api 1.45.2, mcp 2.3.0, certifi 2026.10.23, dockhand-mcp 0.3.0 or later), and alerts #1 and #2 should be fixed. If the SBOM moves but the alerts stay open, that is a GitHub-side question, not a reason to dismiss them.
+
+**Tests:** failing commit `36caa50`. `tests/test_dependency_snapshot.py` takes an invented revision-5 fixture (`tests/fixtures/uv-lock/`) to an expected snapshot JSON, and checks scopes, extras, markers, duplicate versions, errors, the real `uv.lock`, `main()`, and the workflow policy. `tests/test_deps_current.py` covers the notice: closed, open, offline, and the issue request.
+
+**Alternatives rejected:**
+- `anchore/sbom-action`'s dependency-snapshot mode: syft's reading of a revision-5 lock and its scopes would need its own verification, and a stdlib script is directly testable.
+- Lowering `requires-python` to 3.14: violates D-013.
+- Dismissing the alerts: out of scope, and they are real signals once judged correctly.
+- An empty-commit or lockfile-touch rescan: the graph job would fail the same way.
+- A `paths: [uv.lock]` filter on the push trigger: the snapshot is cheap, and resubmitting on every push keeps it tied to `main`'s latest commit.
+
+**Deferred:** once dependabot-core#16524 ships, confirm Dependabot's uv jobs succeed and decide whether to keep the workflow (deps-current's notice prompts it).
+
+**Versions:** `uv lock --upgrade` changed nothing; uv 0.13.6; CPython 3.15.2 is still the newest stable minor; `deps-current.py` reports nothing stale. No runtime dependency added.
