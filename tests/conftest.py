@@ -111,7 +111,7 @@ SetEnv = Callable[..., None]
 # The DockHand OpenAPI document is git-ignored. A throwaway worktree points DOCKHAND_MCP_SPEC_PATH
 # at the main clone's copy instead of copying it. Read at import: clean_env clears DOCKHAND_*.
 _SPEC_PATH_AT_IMPORT = os.environ.get("DOCKHAND_MCP_SPEC_PATH")
-DEFAULT_SPEC = Path(__file__).resolve().parents[1] / "docs" / "api" / "dockhand-openapi-1.0.55.json"
+DEFAULT_SPEC = Path(__file__).resolve().parents[1] / "docs" / "api" / "dockhand-openapi-1.0.56.json"
 
 
 def reference_spec() -> Path:

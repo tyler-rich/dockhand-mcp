@@ -273,4 +273,4 @@ def test_spec_path_comes_from_the_environment(
     assert reference_spec() == spec
     monkeypatch.delenv("DOCKHAND_MCP_SPEC_PATH")
     monkeypatch.setattr(conftest, "_SPEC_PATH_AT_IMPORT", None)  # as if unset at pytest start
-    assert reference_spec() == ROOT / "docs" / "api" / "dockhand-openapi-1.0.55.json"
+    assert reference_spec() == ROOT / "docs" / "api" / "dockhand-openapi-1.0.56.json"
