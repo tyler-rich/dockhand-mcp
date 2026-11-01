@@ -1,8 +1,8 @@
-# DockHand API endpoint map (v1.0.55)
+# DockHand API endpoint map (v1.0.56; spec info.version reports 1.0.55)
 
 Generated from the `/api/docs` OpenAPI 3.0.3 document by `scripts/gen-endpoint-map.py` (the JSON itself is not committed; see `docs/api/README.md`). Regenerate when the spec is refreshed; diff the result and record tier changes in `docs/ARCHIVE.md` §14.
 
-**Totals:** 285 paths, 413 operations. Tier counts: admin=22, destructive=24, excluded=197, operator=66, read=103, split=1
+**Totals:** 286 paths, 415 operations. Tier counts: admin=22, destructive=24, excluded=198, operator=66, read=104, split=1
 
 
 ## Tier legend (this is the security decision, not documentation)
@@ -270,6 +270,13 @@ Columns: **Async** = `job` (returns `{jobId}`; poll `GET /api/jobs/{id}`), `sse`
 | Method | Path | Tier | Public | Query params | Body fields | Async | Perm |
 |---|---|---|---|---|---|---|---|
 | `GET` | `/api/events` | **excluded** |  | env |  | sse |  |
+
+## `exposure-status` (2 ops)
+
+| Method | Path | Tier | Public | Query params | Body fields | Async | Perm |
+|---|---|---|---|---|---|---|---|
+| `GET` | `/api/exposure-status` | **read** | yes |  |  |  |  |
+| `POST` | `/api/exposure-status` | **excluded** | yes |  |  |  |  |
 
 ## `git` (32 ops)
 
@@ -587,9 +594,9 @@ Columns: **Async** = `job` (returns `{jobId}`; poll `GET /api/jobs/{id}`), `sse`
 | `DELETE` | `/api/stacks/{name}` | **destructive** |  | env, force, volumes, files |  |  |  |
 | `POST` | `/api/stacks/{name}/check-path-change` | **operator** |  | env | newComposePath |  | stacks:edit |
 | `GET` | `/api/stacks/{name}/compose` | **read** |  | env |  |  | stacks:view |
-| `PUT` | `/api/stacks/{name}/compose` | **operator** |  | env | content, composePath, envPath, oldComposePath, oldEnvPath, moveFromDir, restart, secretProviderId, pull, build… |  | secrets:view, stacks:edit |
+| `PUT` | `/api/stacks/{name}/compose` | **operator** |  | env | content, composePath, envPath, oldComposePath, oldEnvPath, moveFromDir, restart, secretProviderId, pull, respectPullPolicy… |  | secrets:view, stacks:edit |
 | `GET` | `/api/stacks/{name}/delete-preview` | **read** |  | env |  |  | stacks:remove |
-| `POST` | `/api/stacks/{name}/deploy` | **operator** |  | env | pull, build, forceRecreate | sse | stacks:start |
+| `POST` | `/api/stacks/{name}/deploy` | **operator** |  | env | pull, respectPullPolicy, build, pullBase, forceRecreate | sse | stacks:start |
 | `GET` | `/api/stacks/{name}/deploys` | **read** |  | env |  |  | stacks:view |
 | `GET` | `/api/stacks/{name}/deploys/{runId}` | **read** |  |  |  |  | stacks:view |
 | `DELETE` | `/api/stacks/{name}/deploys/{runId}` | **destructive** |  |  |  |  | stacks:edit |

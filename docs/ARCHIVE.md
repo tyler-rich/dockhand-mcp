@@ -1664,3 +1664,103 @@ OAuth resource-server mode is not part of this release. No server code changed i
 **Alternatives rejected:** a patch release (new tools and a behaviour change call for a minor bump).
 
 **Deferred / follow-ups:** none.
+
+### 2026-10-31 — DockHand API 1.0.56 (branch chore/dockhand-api-1.0.56)
+**Decision:** DockHand API 1.0.56 is the reference spec (`docs/api/dockhand-openapi-1.0.56.json`, git-ignored). The map and `env_required.py` are regenerated from it, the two new operations are classified, and **no tool is added**. The supported version (D-012, README, DOCKHAND-SETUP, `docs/api/README.md`, CLAUDE.md, the bug-report placeholder) is now 1.0.56.
+
+**info.version discrepancy:** the 1.0.56 document, as DockHand's UI names the release, still reports `info.version` 1.0.55. The document is not edited. `scripts/gen-endpoint-map.py` now names the version from the spec's file name (`dockhand-openapi-<version>.json`) and, when that differs from `info.version`, says so: the map's header reads `v1.0.56; spec info.version reports 1.0.55` and `env_required.py`'s docstring says the same (`spec_version()`; a file name that does not match the pattern falls back to `info.version`). `test_the_map_header_states_the_version_honestly` pins it. Nothing else keyed on `info.version`.
+
+**Spec diff (1.0.55 → 1.0.56), done in this session from the two documents:** 413 → 415 operations, 285 → 286 paths; 2 added, 0 removed, 3 changed. `components` and the global `security` are identical; the top level differs only in `paths` and `tags` (the new `exposure-status` tag).
+- *Added:* `GET /api/exposure-status` (no parameters, public; 200 `{warn, dismissed}`: `warn` is true only when auth is off, the bind host is not loopback and the Docker socket is mounted read-write) and `POST /api/exposure-status` (no parameters, public; dismisses that warning; 200 `{dismissed: true}`, 403 once authentication is enabled).
+- *Changed (3):* `POST /api/stacks`, `PUT /api/stacks/{name}/compose` and `POST /api/stacks/{name}/deploy` each gain the optional boolean request fields `pullBase` and `respectPullPolicy`. Nothing else in them differs (parameters, required fields, responses, security all unchanged). No other operation changed, so no tool's contract moved.
+
+**Tiers for the new operations** (`exposure-status` rule in the generator; `tests/test_api_1_0_56.py` pins both). No existing operation changed tier.
+- `GET /api/exposure-status` → **read**. It changes nothing and returns two booleans. No tool is registered for it (not asked for; out of scope).
+- `POST /api/exposure-status` → **excluded** (D-007). It dismisses a DockHand security warning, which an AI client must never do. DockHand only accepts it while its auth is off, which is the state the warning is about. No tool, no internal call. Tested unreachable from every profile and undeclarable at every tool tier.
+- Before classification the generator's catch-all labelled both `review`, and the generated-from-spec test failed on it.
+
+**env-required list:** unchanged (43). Neither new operation takes a parameter.
+
+**The no-op request fields:** none of the three stack tools sends `pullBase` or `respectPullPolicy`, so DockHand's defaults apply (`dockhand_deploy_stack` still sends `pull`, `build` and `forceRecreate`). These pass on the old code too, so `test_stack_tools_never_send_the_pull_fields` is a **regression guard**, not a failing test: it runs each of `dockhand_create_stack`, `dockhand_update_stack_compose` and `dockhand_deploy_stack` and asserts that no JSON body they send anywhere contains either field. Exposing them is a separate change.
+
+**Live** (read-only profile unless stated; structure only). `GET /api/exposure-status` through the project's own client returned a JSON object with exactly the keys `warn` and `dismissed`, both booleans, as the spec describes. `read.json` 56/56 in the current and legacy protocol modes; `operator.json` 20/20 and `destructive.json` (admin, `CONFIRM_MODE=param`) 10/10 on the test environment, with cleanup afterwards and no smoke-prefixed stack or container left; `dockhand-mcp check` reported no problems. Prune was not run.
+
+**Tests:** failing commit `c5f2e0e` (13 failed there with the 1.0.56 spec present: the classification test, the exposure-status unreachability cases (2 operations × 3 profiles, plus the 4 tier cases), the map-header test and the generated-from-spec map test; the stack-field tests pass there and are regression guards). **Alternatives rejected:** editing the spec's `info.version`; mapping the new tag to the `review` default; a tool for the exposure status.
+
+**Deferred / follow-ups:** a read tool for the exposure status, and exposing `pullBase`/`respectPullPolicy`, if wanted; each is its own change.
+
+**Versions:** `uv lock --upgrade` changed one package: `python-multipart` 0.0.32 → 0.0.33 (own commit `chore(deps): refresh to latest`). Everything else unchanged, CPython 3.15.2 is still the newest stable minor, and `scripts/deps-current.py` reports nothing stale. No pins, runtime dependency or CI changes.
+
+### 2026-10-31 — Dependency graph accuracy for uv.lock (branch fix/dependency-graph-snapshot)
+**Decision:** `uv.lock` reaches GitHub's dependency graph through a submitted snapshot: `.github/workflows/dependency-submission.yml` runs the new `scripts/dependency-snapshot.py` on every push to `main` (and on `workflow_dispatch` on `main`) and posts the result to the dependency submission API for manifest `uv.lock`. `ci` builds the same snapshot on every PR without submitting it and lists it in the job summary. `scripts/deps-current.py` prints a notice, never a failure, once dependabot-core#16524 closes.
+
+**The cause, corrected.** The working hypothesis, that GitHub stopped reading `uv.lock` when its header went from `revision = 3` to `revision = 5` (#21, uv 0.13), was **wrong**. The real cause is that **Dependabot does not support Python 3.15**. Since #21 set `requires-python = ">=3.15"`, every Dependabot uv job, including the dependency-graph job, stops before parsing with `tool_version_not_supported` (`detected-version: ">=3.15"`, `supported-versions: 3.10.* … 3.14.*`). Upstream: dependabot-core#16524 (issue) and #16525 (PR), both open on 2026-10-31. The revision change landed in the same PR, which is why the two looked linked. Dependabot's uv lockfile reader (`uv/lib/dependabot/uv/lockfile_document.rb`) never reads `revision`.
+- *Evidence (the repository's dynamic Actions runs):* `Graph Update: uv in /.` on `main`, run 41026512928 (2026-10-30 08:27 UTC, the v0.3.0 merge), failed with that error. So did the security update for opentelemetry-api on `main` (run 41029908626) and every daily uv version update on `dev` from the first one after #21 (run 40818866649, 2026-10-29 04:38 UTC). Every uv job before #21 succeeded.
+- *The graph's state (`gh api`):* the `uv.lock` manifest is `parseable: true` with 52 dependencies, all at v0.2.0's versions (dockhand-mcp 0.2.0, mcp 2.2.0, opentelemetry-api 1.45.0, certifi 2026.7.22). The SBOM matches. The workflow manifests are current (setup-uv v10.3.2 from #17), so pushes to `main` are processed; only the uv entries are frozen.
+- *Alerts:* **#1** (opentelemetry-api ≤ 1.45.0; `main` has 1.45.2 since v0.3.0) and **#2** (certifi < 2026.10.18, opened 2026-10-30; `main` has 2026.10.23) are both stale for this reason: they are judged against the frozen v0.2.0 versions.
+
+**Why a snapshot supersedes the stale entry:** GitHub's dependency submission REST reference states that the graph shows one instance of each manifest file, by precedence: user submissions first, then Dependabot graph jobs (Go and Python only), then automatic submission, then static analysis. The frozen `uv.lock` entry comes from the Dependabot graph job, so a user submission for the same manifest path outranks it. Only the latest snapshot per `job.correlator` + `detector.name` counts, so each push to `main` replaces the previous one (correlator `dependency-submission uv.lock`). GitHub's docs say submitted dependencies receive Dependabot alerts. No doc says outright that an existing alert closes when the graph's version moves past the vulnerable range; that is the maintainer's post-merge check.
+
+**The snapshot** (`scripts/dependency-snapshot.py`, standard library only: `tomllib`, `json`, `argparse`):
+- Every locked package except the project itself becomes `pkg:pypi/<normalised name>@<version>`. The project's name and version and the lock revision go in the manifest's `metadata`.
+- `relationship` is `direct` for the project's dependencies, optional dependencies and dependency groups, and `indirect` otherwise.
+- `scope` is `runtime` when the package is reachable from the project's dependencies or optional dependencies, and `development` when reachable only from a dependency group. A package nothing reaches is reported as runtime, so no alert is lost.
+- Environment markers are ignored (anything some platform installs is reported). An extra a parent asks for brings that package's optional dependencies. A name locked at two versions is keyed `name@version`.
+- An unknown lockfile `version` (format, not revision), a missing or duplicated project, or a dangling reference fails with `::error`.
+- On this branch's `uv.lock`: dockhand-mcp 0.3.0, 51 packages (36 runtime, 15 development); opentelemetry-api 1.45.2 runtime/indirect, mcp 2.3.0 runtime/direct, certifi 2026.10.23 runtime/indirect.
+
+**Permissions:** the workflow's top level is `permissions: {}`; its one job has `contents: write` (required by `POST /repos/{owner}/{repo}/dependency-graph/snapshots`) and `if: github.ref == 'refs/heads/main'`. It uses `GITHUB_TOKEN` through `gh api` and no other secret, checks out with `persist-credentials: false`, and never runs on `pull_request`. Its only action is `actions/checkout` v7.0.1 (`3d3c42e…`, the newest release, already covered by Dependabot's github-actions updates), so no hand-maintained pin is added. Tests pin the triggers, the permissions, SHA pinning and the ci dry run.
+
+**Coverage while Dependabot can't process the project** (docs/SECURITY.md, *Dependency vulnerability coverage*; CONTRIBUTING, *Dependency graph*): the snapshot (graph and alerts), OSV-Scanner on `uv.lock` in every PR, the weekly image scan, and `deps-current`. **Dependabot uv version and security PRs will not open until upstream support lands.**
+
+**How to verify after merge:** after the next merge to `main` (or a `workflow_dispatch` run on `main`), the `dependency-submission` run logs `snapshot <id>: SUCCESS …`. The dependency graph's SBOM (`gh api repos/{owner}/{repo}/dependency-graph/sbom`) should then list `main`'s versions (opentelemetry-api 1.45.2, mcp 2.3.0, certifi 2026.10.23, dockhand-mcp 0.3.0 or later), and alerts #1 and #2 should be fixed. If the SBOM moves but the alerts stay open, that is a GitHub-side question, not a reason to dismiss them.
+
+**Tests:** failing commit `36caa50`. `tests/test_dependency_snapshot.py` takes an invented revision-5 fixture (`tests/fixtures/uv-lock/`) to an expected snapshot JSON, and checks scopes, extras, markers, duplicate versions, errors, the real `uv.lock`, `main()`, and the workflow policy. `tests/test_deps_current.py` covers the notice: closed, open, offline, and the issue request.
+
+**Alternatives rejected:**
+- `anchore/sbom-action`'s dependency-snapshot mode: syft's reading of a revision-5 lock and its scopes would need its own verification, and a stdlib script is directly testable.
+- Lowering `requires-python` to 3.14: violates D-013.
+- Dismissing the alerts: out of scope, and they are real signals once judged correctly.
+- An empty-commit or lockfile-touch rescan: the graph job would fail the same way.
+- A `paths: [uv.lock]` filter on the push trigger: the snapshot is cheap, and resubmitting on every push keeps it tied to `main`'s latest commit.
+
+**Deferred:** once dependabot-core#16524 ships, confirm Dependabot's uv jobs succeed and decide whether to keep the workflow (deps-current's notice prompts it).
+
+**Versions:** `uv lock --upgrade` changed nothing; uv 0.13.6; CPython 3.15.2 is still the newest stable minor; `deps-current.py` reports nothing stale. No runtime dependency added.
+
+### 2026-10-31 — Claude Desktop connection troubleshooting (branch docs/client-troubleshooting)
+**Decision:** `docs/CLIENTS.md` gains a *Troubleshooting* section and an `mcp-remote` subsection in §3; the README's client setup links to it. Docs only: no code, config, rate-limit or OAuth change.
+
+**Why:** On Windows, Claude Desktop often does not receive a user environment variable (stale environment from a background process or the updater). `mcp-remote` then logs `Environment variable 'DOCKHAND_MCP_AUTH' not found`, sends the literal `${DOCKHAND_MCP_AUTH}`, gets 401, falls back to OAuth discovery and reports `Dynamic Client Registration rejected (HTTP 404)`, which is a symptom (the server has no OAuth). Several `mcp-remote` processes retry at once, so the auth-failure block (10 failures / 5 min → 429 `rate_limited` for 5 min) trips within seconds.
+
+**Documented:** symptom → cause → fix table; the recovery sequence (fix token, fully quit Claude Desktop, end leftover `node` processes, wait 5 minutes or restart the container); the healthy log (`Using custom headers: Authorization`); the `env` block for Windows and macOS, with the trade-off that the token then lives in `claude_desktop_config.json` and must be redacted before sharing. Placeholders only (`<HOST>`, `<PORT>`, `<TOKEN>`, `example.test`).
+
+**Alternatives rejected:** changing the rate limiter to ignore repeated identical failures (out of scope; a behaviour change); documenting a user environment variable as the primary fix (unreliable on Windows).
+
+**Deferred:** the `mcp-remote` log strings come from user reports and were not re-checked against the `mcp-remote` source. Elicitation behaviour through `mcp-remote` is unverified.
+
+**Versions:** docs-only; dependencies untouched.
+
+### 2026-10-31 — Release v0.3.1 (branch chore/release-0.3.1)
+**Decision:** Version 0.3.1 (`pyproject.toml`, `__version__`, `uv.lock`'s own entry). It ships the changes recorded since the v0.3.0 entry. **No tool or behaviour changes**, so this is a patch release.
+- **Supported DockHand: 1.0.56** (two new operations classified, no new tools; the spec's `info.version` still reports 1.0.55).
+- **Dependency bump:** `python-multipart` 0.0.32 → 0.0.33.
+- **Dependency graph fix:** a `dependency-submission` workflow submits `uv.lock` to GitHub's dependency graph on every push to `main`, so the graph and Dependabot alerts reflect the locked versions while Dependabot does not support Python 3.15. This release's merge to `main` is its first run.
+- **Docs:** Claude Desktop (`mcp-remote`) connection troubleshooting in `docs/CLIENTS.md`.
+- **Dependabot PRs merged without their own entry:** none since v0.3.0.
+
+OAuth resource-server mode is not part of this release. No server code changed in this PR.
+
+**Release mechanics, unchanged from v0.3.0:** `release.yml` on the `v0.3.1` tag. `v0.3.0` is the previous tag, so `release-notes.py` takes the entries whose headings are in the ARCHIVE at `v0.3.1` and not at `v0.3.0`: the DockHand API 1.0.56 entry through this one. `CHANGELOG.md` gains a 0.3.1 section from `scripts/release-notes.py changelog --previous-archive <ARCHIVE at v0.3.0>`, with one hand edit for readability: a summary after the heading. The README's status line (v0.3, DockHand 1.0.56) is still correct and is unchanged.
+
+**Pre-release checks (local, on this branch):**
+- The full suite passes (2097 passed, 2 skipped).
+- Image built per platform with the release's build arguments: labels `version=0.3.1` and `source=https://github.com/tyler-rich/dockhand-mcp`, CPython 3.15.2. Under `ci`'s hardened-run flags it is `healthy`, `/healthz` answers `200 {"status":"ok"}`, and `/licenses/LICENSE` and `/licenses/NOTICE` match the repository's. Inside it, `dockhand-mcp check` with the `operator` profile does not report the own-container problem.
+- OSV-Scanner v2.7.0 (its official image, by digest) on per-platform docker archives, judged by `scripts/osv-image-gate.py`: **linux/amd64 and linux/arm64 both pass, 0 blocking, 70 reported** (v0.3.0: 69). The published v0.3.0 image, scanned the same day, reports the same 70, so the extra finding is a newly published Debian advisory, not a change in the image. No exception added; `osv-scanner.toml` still holds `IgnoredVulns = []`.
+- Live, read-only profile, against the built container with both token files mounted read-only and named by the `*_FILE` variables: `read.json` 56/56 in both `auto` and `legacy`. `dockhand-mcp check` with the `operator` profile in that container reports no problems.
+
+**Versions:** `uv lock --upgrade` changed nothing (52 packages; only the project's own entry moves to 0.3.1). CPython 3.15.2 is still the newest stable minor (3.16 is a pre-release), so there is no Python bump. `scripts/deps-current.py` reports nothing stale. Release tooling unchanged: OSV-Scanner v2.7.0, cosign v3.1.4, syft v1.55.0, gitleaks 8.30.1. No dependency was added.
+
+**Alternatives rejected:** a minor release (nothing user-visible in the tools or their behaviour changed).
+
+**Deferred / follow-ups:** none.

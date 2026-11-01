@@ -29,13 +29,34 @@ Trust boundaries: (a) MCP client ↔ dockhand-mcp (untrusted client until authen
 | **Compose-level host takeover** | Model writes a compose that mounts `/` or the Docker socket, or runs `privileged` | Guardrails (§5) run before any compose/stack write; `strict` refuses, `warn` returns findings; there is no `off`. DockHand's own validator is also run. |
 | **Data exfiltration through tools** | `exec`, file browser, volume browser, image export, host FS | `excluded` tier — never exposed (D-007). |
 | **Denial of service** | Huge log tails, unbounded polling, SSE floods | Caps: `tail ≤ 5000`, `max_bytes ≤ 1 MiB`, `timeout ≤ 300 s`, SSE ring buffer 50 events, operation registry 100 entries/1 h, body ≤ 1 MiB, rate limits. |
-| **Supply chain** | Malicious/buggy dependency or base image | `uv.lock`; OSV-Scanner on the lockfile at every PR (any finding fails), on both platforms of the image before every release, and weekly on the published image. The image gate fails on any finding outside the Debian base packages, on a Debian finding fixed in the image's Debian release, and on an unfixed finding with CVSS ≥ 9.0; Debian-unimportant and other unfixed Debian findings are listed, not failed (plan S-09); Semgrep SAST in `ci`, and CodeQL through GitHub's code scanning default setup; gitleaks; Dependabot (daily grouped version updates, immediate security updates) + the `deps-current` freshness gate (nothing is ever behind its newest stable release — D-013); pinned base image digest on the latest Python series; cosign-signed images; SBOM. (plan S-09) |
+| **Supply chain** | Malicious/buggy dependency or base image | `uv.lock`; OSV-Scanner on the lockfile at every PR (any finding fails), on both platforms of the image before every release, and weekly on the published image. The image gate fails on any finding outside the Debian base packages, on a Debian finding fixed in the image's Debian release, and on an unfixed finding with CVSS ≥ 9.0; Debian-unimportant and other unfixed Debian findings are listed, not failed (plan S-09); Semgrep SAST in `ci`, and CodeQL through GitHub's code scanning default setup; gitleaks; Dependabot (daily grouped version updates, immediate security updates) + the `deps-current` freshness gate (nothing is ever behind its newest stable release — D-013); pinned base image digest on the latest Python series; cosign-signed images; SBOM; the dependency-graph snapshot of `uv.lock` (see *Dependency vulnerability coverage* below). (plan S-09) |
 | **Container breakout** | Vulnerability in Python/httpx | Non-root, `cap_drop: ALL`, `no-new-privileges`, `read_only`, tmpfs `/tmp` `noexec`, pids/memory limits, no socket, no host mounts. Blast radius = the DockHand token. |
 | **Session / handle hijacking** | Stateful sessions; guessable operation handles | MCP `2026-07-28` has no sessions (D-014). `op_id`s are uuid4, bound to the creating principal, TTL 1 h. (Phase 5 OAuth uses short-lived JWTs, `aud`-bound.) |
 | **Forged or replayed approval** | Client sends an elicitation approval that was never asked for, reuses one, or changes arguments after approval | HMAC-signed, single-use, 120 s challenge bound to principal + tool + argument hash (ARCHITECTURE §7). The residual risk is a client that auto-approves without showing the human; that is a client-trust problem we document, not one a server can solve. |
 | **Header/body smuggling** | A gateway authorizes on `Mcp-Method`/`Mcp-Name` while the body calls something else | S-12: mismatch → 400. |
 | **Server-initiated abuse of the client** | Sampling, roots, logging notifications | None of these are used (ARCHITECTURE §7); the server never asks the client's model to do anything. |
 | **Log injection** | Newlines/ANSI in names or DockHand messages | JSON logging escapes everything; free-text fields truncated to 512 chars. |
+
+### Dependency vulnerability coverage
+
+Dependabot can't process this project while it requires Python 3.15: every uv job, including
+GitHub's own reading of `uv.lock` for the dependency graph, stops with `tool_version_not_supported`
+(dependabot-core#16524). Until upstream support lands:
+
+- **Dependabot uv version-update and security-update PRs will not open.** Dependabot alerts still
+  do, from the snapshot below.
+- **Dependency graph and Dependabot alerts:** `dependency-submission.yml` submits a snapshot of
+  `uv.lock` (`scripts/dependency-snapshot.py`) on every push to `main`. A user submission outranks
+  the stale graph-job entry for the same manifest, so the graph and the alerts judge `main`'s
+  locked versions. The job holds `contents: write`, which the submission API requires, and only
+  `GITHUB_TOKEN`; it never runs on pull requests. `ci` builds the snapshot on each PR without
+  submitting it.
+- **Every pull request:** OSV-Scanner on `uv.lock` in `ci` fails on any known vulnerability.
+- **Weekly:** the OSV-Scanner scan of the published image (`image-scan.yml`).
+- **Freshness:** the `deps-current` gate fails a PR when anything is behind its newest stable
+  release (D-013), so a fixed release is picked up without a Dependabot PR. It also prints a
+  notice once dependabot-core#16524 closes; then check Dependabot's uv jobs, and keep or remove
+  the snapshot workflow.
 
 ### Output redaction
 

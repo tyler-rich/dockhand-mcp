@@ -12,7 +12,7 @@ DockHand manages, through DockHand's REST API only, and never through the Docker
 everything DockHand can. dockhand-mcp exposes a curated, profile-gated subset of DockHand's API:
 the whole server is designed around what a prompt-injected model must *not* be able to do.
 
-**Status: early (v0.3).** Built and tested against DockHand's API 1.0.55. Before 1.0, tool
+**Status: early (v0.3).** Built and tested against DockHand's API 1.0.56. Before 1.0, tool
 names, arguments, results and configuration can change in a minor release; each release's notes
 list what changed, so pin the image by digest and read them before upgrading. Tools whose
 DockHand response shape is not documented are marked `experimental` in
@@ -84,7 +84,8 @@ destructive tools. If the container keeps restarting, its last log line says why
 [troubleshooting](docs/DOCKHAND-SETUP.md#startup-and-runtime-failures). Other ways to run it:
 [`deploy/docker-run.md`](deploy/docker-run.md) (plain Docker),
 [`deploy/dockhand-stack.yml`](deploy/dockhand-stack.yml) (DockHand or Portainer stack editors),
-stdio for Claude Desktop ([CLIENTS §3](docs/CLIENTS.md#3-claude-desktop-chat)).
+stdio for Claude Desktop ([CLIENTS §3](docs/CLIENTS.md#3-claude-desktop-chat)); connection problems:
+[client troubleshooting](docs/CLIENTS.md#troubleshooting).
 
 Verify the image signature before you deploy it; each release's notes carry the exact
 `cosign verify` line.

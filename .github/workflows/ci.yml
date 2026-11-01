@@ -145,6 +145,20 @@ jobs:
           python3 scripts/deps-current.py || fail=1
           exit $fail
 
+      - name: Dependency snapshot (dry run, not submitted)
+        if: steps.changes.outputs.code == 'true'
+        # dependency-submission.yml submits this on main; here it only has to build from uv.lock.
+        run: |
+          python3 scripts/dependency-snapshot.py --output "$RUNNER_TEMP/snapshot.json"
+          python3 - "$RUNNER_TEMP/snapshot.json" <<'EOF' >> "$GITHUB_STEP_SUMMARY"
+          import json, sys
+          resolved = json.load(open(sys.argv[1]))["manifests"]["uv.lock"]["resolved"]
+          print("| package | version | scope | relationship |\n|---|---|---|---|")
+          for name, dep in resolved.items():
+              version = dep["package_url"].rsplit("@", 1)[1]
+              print(f"| {name} | {version} | {dep['scope']} | {dep['relationship']} |")
+          EOF
+
       - name: OSV-Scanner (uv.lock)
         if: steps.changes.outputs.code == 'true'
         run: |

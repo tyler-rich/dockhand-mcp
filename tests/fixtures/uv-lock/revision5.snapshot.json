@@ -1,0 +1,102 @@
+{
+  "version": 0,
+  "sha": "0123456789abcdef0123456789abcdef01234567",
+  "ref": "refs/heads/main",
+  "job": {
+    "correlator": "dependency-submission uv.lock",
+    "id": "42"
+  },
+  "detector": {
+    "name": "dockhand-mcp uv.lock snapshot",
+    "version": "1.0.0",
+    "url": "https://github.example.test/owner/repo/blob/main/scripts/dependency-snapshot.py"
+  },
+  "scanned": "2026-11-01T00:00:00Z",
+  "manifests": {
+    "uv.lock": {
+      "name": "uv.lock",
+      "file": {
+        "source_location": "uv.lock"
+      },
+      "metadata": {
+        "project": "demo-app",
+        "project_version": "1.2.3",
+        "lock_revision": 5
+      },
+      "resolved": {
+        "anyio": {
+          "package_url": "pkg:pypi/anyio@4.12.0",
+          "relationship": "indirect",
+          "scope": "runtime",
+          "dependencies": []
+        },
+        "certifi": {
+          "package_url": "pkg:pypi/certifi@2026.10.23",
+          "relationship": "indirect",
+          "scope": "runtime",
+          "dependencies": []
+        },
+        "cffi": {
+          "package_url": "pkg:pypi/cffi@2.1.0",
+          "relationship": "indirect",
+          "scope": "runtime",
+          "dependencies": []
+        },
+        "colorama": {
+          "package_url": "pkg:pypi/colorama@0.4.6",
+          "relationship": "indirect",
+          "scope": "development",
+          "dependencies": []
+        },
+        "cryptography": {
+          "package_url": "pkg:pypi/cryptography@50.0.2",
+          "relationship": "indirect",
+          "scope": "runtime",
+          "dependencies": ["pkg:pypi/cffi@2.1.0"]
+        },
+        "httpx": {
+          "package_url": "pkg:pypi/httpx@0.28.1",
+          "relationship": "direct",
+          "scope": "runtime",
+          "dependencies": ["pkg:pypi/anyio@4.12.0", "pkg:pypi/certifi@2026.10.23"]
+        },
+        "iniconfig": {
+          "package_url": "pkg:pypi/iniconfig@2.3.0",
+          "relationship": "indirect",
+          "scope": "development",
+          "dependencies": []
+        },
+        "mcp": {
+          "package_url": "pkg:pypi/mcp@2.3.0",
+          "relationship": "direct",
+          "scope": "runtime",
+          "dependencies": ["pkg:pypi/opentelemetry-api@1.45.2", "pkg:pypi/pyjwt@2.12.1"]
+        },
+        "opentelemetry-api": {
+          "package_url": "pkg:pypi/opentelemetry-api@1.45.2",
+          "relationship": "indirect",
+          "scope": "runtime",
+          "dependencies": []
+        },
+        "pyjwt": {
+          "package_url": "pkg:pypi/pyjwt@2.12.1",
+          "relationship": "indirect",
+          "scope": "runtime",
+          "dependencies": ["pkg:pypi/cryptography@50.0.2"]
+        },
+        "pytest": {
+          "package_url": "pkg:pypi/pytest@9.1.1",
+          "relationship": "direct",
+          "scope": "development",
+          "dependencies": ["pkg:pypi/colorama@0.4.6", "pkg:pypi/iniconfig@2.3.0"]
+        },
+        "respx": {
+          "package_url": "pkg:pypi/respx@0.23.1",
+          "relationship": "direct",
+          "scope": "development",
+          "dependencies": ["pkg:pypi/httpx@0.28.1"]
+        }
+      }
+    }
+  }
+}

@@ -104,6 +104,35 @@ today, run the server as a local stdio subprocess in Docker:
 bearer token, and the client is the parent process. There is no `-p`: nothing listens on a port.
 Server logs go to stderr, which Claude Desktop records in its MCP logs.
 
+### Alternative: the HTTP server through `mcp-remote`
+
+If the server already runs behind TLS, Claude Desktop can reach it with the `mcp-remote` bridge,
+started by `npx` (Node.js required). The bearer header comes from an environment variable that
+you set in the server's `env` block, with the scheme included:
+
+```json
+{
+  "mcpServers": {
+    "dockhand": {
+      "command": "npx",
+      "args": [
+        "-y", "mcp-remote", "https://mcp.example.test/mcp",
+        "--header", "Authorization:${DOCKHAND_MCP_AUTH}"
+      ],
+      "env": { "DOCKHAND_MCP_AUTH": "Bearer <TOKEN>" }
+    }
+  }
+}
+```
+
+**On Windows, use the `env` block.** A user environment variable often never reaches Claude
+Desktop (it inherits a stale environment from a background process or the updater), and then
+`mcp-remote` sends the literal text `${DOCKHAND_MCP_AUTH}` ([Troubleshooting](#troubleshooting)).
+The trade-off: the token now sits in `claude_desktop_config.json`. Redact it before you share or
+paste that file, and keep the file readable only by you. On macOS and Linux a variable exported
+in the environment Claude Desktop starts with also works, but the `env` block behaves the same
+everywhere.
+
 Elicitation support in Claude Desktop chat: **unverified**. Expect the `confirm` path.
 
 ## 4. Claude.ai
@@ -229,6 +258,52 @@ but it cannot stop a model from being persuaded by what it reads.
   more reason to run `operator` by default and keep destructive tools on approval.
 - If a model proposes an action you didn't ask for right after reading a log or a file, stop and
   look at what it read.
+
+## Troubleshooting
+
+### Claude Desktop through `mcp-remote` will not connect
+
+The failures below chain together, so the error you see first is usually a symptom.
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| `mcp-remote` logs `Environment variable 'DOCKHAND_MCP_AUTH' not found`, then the server answers 401 | The variable in `--header "Authorization:${DOCKHAND_MCP_AUTH}"` did not reach `mcp-remote`, so the literal text `${DOCKHAND_MCP_AUTH}` was sent as the credential. This is the root cause. | Put the variable in the server's `env` block (below). Windows user variables often do not reach Claude Desktop. |
+| `Dynamic Client Registration rejected (HTTP 404)` or other OAuth discovery lines | After the 401, `mcp-remote` falls back to OAuth discovery. dockhand-mcp has no OAuth, so discovery fails. | Not a cause: fix the 401 above. |
+| `429` with `rate_limited`, even after you fixed the token | Claude Desktop runs several `mcp-remote` processes at once (the chat plus a shared pool for other session types), each retrying, so one bad token reaches 10 failures in 5 minutes within seconds. The address is blocked for 5 minutes ([SECURITY.md](SECURITY.md)). | Recover as below. |
+
+Recovery:
+
+1. Fix the token and the `env` block.
+2. Fully quit Claude Desktop (from the tray or menu bar, not just the window), and end leftover
+   `node` processes running `mcp-remote` in Task Manager or Activity Monitor.
+3. Wait 5 minutes, or restart the dockhand-mcp container to clear the block.
+4. Reopen Claude Desktop.
+
+A healthy `mcp-remote` log shows `Using custom headers: Authorization`, no
+`Environment variable ... not found` warning, and no OAuth lines.
+
+Windows (`%APPDATA%\Claude\claude_desktop_config.json`) and macOS
+(`~/Library/Application Support/Claude/claude_desktop_config.json`) use the same entry; both put
+the variable in `env`:
+
+```json
+{
+  "mcpServers": {
+    "dockhand": {
+      "command": "npx",
+      "args": [
+        "-y", "mcp-remote", "https://<HOST>:<PORT>/mcp",
+        "--header", "Authorization:${DOCKHAND_MCP_AUTH}"
+      ],
+      "env": { "DOCKHAND_MCP_AUTH": "Bearer <TOKEN>" }
+    }
+  }
+}
+```
+
+The token lives in that file, so redact `<TOKEN>` before you share the config or paste it into
+an issue. Claude Desktop's MCP logs (Settings › Developer, or the `logs` folder beside the
+config) hold the `mcp-remote` output described above.
 
 ## Reverse proxy and TLS
 

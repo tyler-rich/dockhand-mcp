@@ -4,6 +4,37 @@ Notable changes per release, generated from the decision log in [`docs/ARCHIVE.m
 by `scripts/release-notes.py changelog` (each entry's decision; the log has the reasoning).
 Versions follow [Semantic Versioning](https://semver.org/).
 
+## [0.3.1] — 2026-10-31
+
+Supported DockHand: 1.0.56. **No tool or behaviour changes.**
+
+- **DockHand 1.0.56:** two new operations classified (one read, one excluded); no new tools. The spec's `info.version` still reports 1.0.55.
+- **Dependency bump:** `python-multipart` 0.0.32 → 0.0.33.
+- **Dependency graph fix:** `uv.lock` is submitted to GitHub's dependency graph on every push to `main`, so the graph and Dependabot alerts reflect the locked versions while Dependabot does not support Python 3.15.
+- **Docs:** troubleshooting for Claude Desktop connections through `mcp-remote` (`docs/CLIENTS.md`).
+- OAuth is not part of this release.
+
+### 2026-10-31 — DockHand API 1.0.56 (branch chore/dockhand-api-1.0.56)
+
+DockHand API 1.0.56 is the reference spec (`docs/api/dockhand-openapi-1.0.56.json`, git-ignored). The map and `env_required.py` are regenerated from it, the two new operations are classified, and **no tool is added**. The supported version (D-012, README, DOCKHAND-SETUP, `docs/api/README.md`, CLAUDE.md, the bug-report placeholder) is now 1.0.56.
+
+### 2026-10-31 — Dependency graph accuracy for uv.lock (branch fix/dependency-graph-snapshot)
+
+`uv.lock` reaches GitHub's dependency graph through a submitted snapshot: `.github/workflows/dependency-submission.yml` runs the new `scripts/dependency-snapshot.py` on every push to `main` (and on `workflow_dispatch` on `main`) and posts the result to the dependency submission API for manifest `uv.lock`. `ci` builds the same snapshot on every PR without submitting it and lists it in the job summary. `scripts/deps-current.py` prints a notice, never a failure, once dependabot-core#16524 closes.
+
+### 2026-10-31 — Claude Desktop connection troubleshooting (branch docs/client-troubleshooting)
+
+`docs/CLIENTS.md` gains a *Troubleshooting* section and an `mcp-remote` subsection in §3; the README's client setup links to it. Docs only: no code, config, rate-limit or OAuth change.
+
+### 2026-10-31 — Release v0.3.1 (branch chore/release-0.3.1)
+
+Version 0.3.1 (`pyproject.toml`, `__version__`, `uv.lock`'s own entry). It ships the changes recorded since the v0.3.0 entry. **No tool or behaviour changes**, so this is a patch release.
+- **Supported DockHand: 1.0.56** (two new operations classified, no new tools; the spec's `info.version` still reports 1.0.55).
+- **Dependency bump:** `python-multipart` 0.0.32 → 0.0.33.
+- **Dependency graph fix:** a `dependency-submission` workflow submits `uv.lock` to GitHub's dependency graph on every push to `main`, so the graph and Dependabot alerts reflect the locked versions while Dependabot does not support Python 3.15. This release's merge to `main` is its first run.
+- **Docs:** Claude Desktop (`mcp-remote`) connection troubleshooting in `docs/CLIENTS.md`.
+- **Dependabot PRs merged without their own entry:** none since v0.3.0.
+
 ## [0.3.0] — 2026-10-30
 
 Supported DockHand: 1.0.55. **Python 3.15 is required for source installs**; the Docker image is the recommended install.
